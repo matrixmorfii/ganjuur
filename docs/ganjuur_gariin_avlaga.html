@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монгол Шунхан Ганжуур — Хэрэглэгчийн гарын авлага</title>
+<style>
+:root { --ink:#243047; --warm:#754b33; --paper:#fffdf8; --line:#e8ddce; --soft:#f8f1e8; --blue:#e9eff8; --green:#eef6ef; --warn:#fff3e8; --accent:#5f3f2f; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Arial, Noto Sans Mongolian, Noto Sans, sans-serif; color:var(--ink); background:#f3efe9; line-height:1.7; }
+main { max-width:960px; margin:0 auto; background:var(--paper); padding:48px 56px 68px; min-height:100vh; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+h1,h2,h3 { line-height:1.25; color:var(--accent); }
+h1 { font-size:2.1rem; margin:0 0 .4rem; }
+h2 { margin-top:2.4rem; border-bottom:2px solid var(--line); padding-bottom:.45rem; font-size:1.3rem; }
+h3 { margin-top:1.5rem; font-size:1.1rem; }
+.subtitle { color:#6b625d; font-size:1.05rem; margin-top:0; }
+.box { border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:18px 0; background:var(--soft); }
+.box.good { background:var(--green); border-color:#cce4d0; }
+.box.note { background:var(--blue); border-color:#cbd9ee; }
+.box.warn { background:var(--warn); border-color:#f0cfb5; }
+.box.wflow { background:linear-gradient(135deg,#f8f1e8,#e9eff8); border:2px solid #d4c5b0; }
+.steps { counter-reset:step; list-style:none; padding:0; }
+.steps li { position:relative; padding:14px 16px 14px 58px; margin:10px 0; border:1px solid var(--line); border-radius:10px; background:#fff; }
+.steps li::before { counter-increment:step; content:counter(step); position:absolute; left:16px; top:14px; width:28px; height:28px; border-radius:50%; display:grid; place-items:center; color:#fff; background:var(--warm); font-weight:bold; }
+.row4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0; }
+@media(max-width:700px){ .row4{grid-template-columns:repeat(2,1fr);} main{padding:25px 18px 42px;} h1{font-size:1.6rem;} }
+.wstep { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 8px; text-align:center; font-weight:600; font-size:.92rem; color:var(--accent); }
+.wstep .ic { font-size:1.6rem; display:block; margin-bottom:2px; }
+.wstep .label { font-size:.88rem; }
+.wstep-arrow { display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:var(--warm); padding: 0 2px; }
+table { width:100%; border-collapse:collapse; margin:12px 0; }
+th,td { padding:10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+th { background:var(--soft); }
+figure { margin:14px 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+figure img { width:100%; display:block; }
+figcaption { padding:8px 14px; background:var(--soft); font-size:.88rem; color:#5f564f; text-align:center; }
+kbd { display:inline-block; border:1px solid #bfb8ae; border-bottom-width:2px; border-radius:4px; padding:0 5px; background:#fff; font-family:inherit; }
+a { color:#7a3e20; }
+.highlight { background:#fff5ee; border-color:#754b33; }
+.kv { display:flex; gap:10px; padding:6px 0; }
+.kv dt { font-weight:700; color:var(--accent); min-width:140px; }
+.kv dd { margin:0; color:#5f564f; }
+</style>
+</head>
+<body>
+<main>
+<h1>Монгол Шунхан Ганжуур</h1>
+<p class="subtitle">Хэрэглэгчийн гарын авлага</p>
+
+<!-- ============ ХӨТӨЧ АЖИЛЫН ДРААЛАЛ ============ -->
+<div class="box wflow" style="margin-top:8px;">
+<strong>⚡ Хурдан эхлэх — дөрвөн алхам</strong>
+<div class="row4">
+  <div class="wstep"><span class="ic">📁</span><span class="label">Зураг оруулах<br><small>ZIP файл оруулна</small></span></div>
+  <div class="wstep-arrow">→</div>
+  <div class="wstep"><span class="ic">🔍</span><span class="label">Дүрсээр хайх<br><small>Тасалж оруулна</small></span></div>
+</div>
+<div class="row4" style="grid-template-columns:1fr auto 1fr auto 1fr;">
+  <div style="display:none;"></div>
+  <div style="display:none;"></div>
+  <div class="wstep"><span class="ic">🗺️</span><span class="label">Онцгой хэлбэр<br><small>Тоолол шинэчилнэ</small></span></div>
+  <div class="wstep-arrow">→</div>
+  <div class="wstep"><span class="ic">✍️</span><span class="label">Галиг оруулах<br><small>Текст хадгална</small></span></div>
+</div>
+</div>
+
+<div class="box good">
+<strong>Энэ систем юу хийдэг вэ?</strong><br>
+Эртний судрын зураг дотроос ижил төстэй дүрс, ховор хэлбэр, анхаарал татах хэсгийг олоход тусална. Дараа нь та өөрөө уншиж, галигийг нь хадгална. <strong>Систем таны оруулсан галигийн зай, цэг тэмдгийг өөрчилдөггүй.</strong>
+</div>
+
+<h2>1. Эхлэхээс өмнө</h2>
+<ul>
+<li>Судрын зургуудаа JPG, JPEG эсвэл PNG хэлбэрээр бэлдэнэ.</li>
+<li>Олон зураг байвал бүгдийг нь нэг <strong>ZIP</strong> файлд хийнэ.</li>
+<li>Зураг тод, зөв хэр харсан, хэт жижиг биш байвал үр дүн сайн гарна.</li>
+<li>Системийн хаягаар орж, нэвтрэх нэр нууц үгээ оруулна.</li>
+</ul>
+
+<div class="box note">
+<strong>ZIP файл гэж юу вэ?</strong><br>
+Олон файлыг нэг хавтас шиг багцалсан файл юм. Windows дээр зурагнуудаа сонгоод хулганы баруун товч → <em>Send to / Compressed (zipped) folder</em> гэж хийж болно.
+</div>
+
+<h2>2. Дэлгэцийн дөрвөн хэсэг</h2>
+
+<figure>
+<div style="background:#f8f1e8; padding:24px 20px; text-align:center;">
+<strong>Дэлгэцийний дээд хэсгүүд (табууд)</strong>
+<div class="row4" style="margin-top:14px; margin-bottom:0;">
+  <div class="wstep highlight"><span class="ic">📁</span><span class="label">1 · Зураг оруулах</span></div>
+  <div class="wstep"><span class="ic">🔍</span><span class="label">2 · Дүрсээр хайх</span></div>
+  <div class="wstep"><span class="ic">🗺️</span><span class="label">3 · Онцгой хэлбэр</span></div>
+  <div class="wstep"><span class="ic">✍️</span><span class="label">4 · Галиг оруулах</span></div>
+</div>
+</div>
+<figcaption><strong>Зүүн баруун тийш шилжих үед</strong> дээд талын табууд дараалсан байдлаар байх болно. Шилжих үед харж буй хэсгийг баруун талд харуулах болно.</figcaption>
+</figure>
+
+<table>
+<tr><th>Хэсэг</th><th>Юу хийх вэ?</th></tr>
+<tr><td><strong>1 · Зураг оруулах</strong></td><td>Скан зургуудын ZIP файлыг сан руу оруулна. Зураг оруулсны дараа <strong>2-р хэсэг рүү нүүнэ</strong>.</td></tr>
+<tr><td><strong>2 · Дүрсээр хайх</strong></td><td>Нэг үсэг, үг эсвэл тэмдгийн зургийг оруулаад ижил төстэй хэсгүүдийг олно.</td></tr>
+<tr><td><strong>3 · Онцгой хэлбэр</strong></td><td>Бусдаасаа өөр, ховор байж болох дүрсүүдийг газрын зураг шиг байрлалаар харна.</td></tr>
+<tr><td><strong>4 · Галиг оруулах</strong></td><td>Эх зургийг харж байгаад өөрийн уншсан галигийг яг хүссэнээрээ хадгална.</td></tr>
+</table>
+
+<h2>3. Зураг оруулах</h2>
+<ol class="steps">
+<li><strong>"1 · Зураг оруулах"</strong> табыг нээнэ.</li>
+<li><strong>"Зургийн архив (.zip)"</strong> дээр дарж ZIP файлаа сонгоно.</li>
+<li><strong>"Хэсэглэх алхам"</strong>-ыг эхлээд 50 пикселээр үлдээнэ. Энэ нь ихэнх тохиолдолд тохиромжтой.</li>
+<li><strong>"Зургийг сан руу оруулах"</strong> товчийг дарна.</li>
+<li>Явцын мэдээлэл гарч иртэл хүлээнэ. Дуусахад хэдэн хуудас, хэдэн хэсэг хадгалсныг харуулна.</li>
+</ol>
+
+<div class="box warn">
+<strong>Анхаарах зүйл:</strong> Оруулах явцад цонхыг хааж, серверийг унтрааж болохгүй. Олон болон том зурагтай бол хугацаа шаардана.
+</div>
+
+<figure>
+<div style="background:#f8f1e8; padding:24px 20px;">
+<div style="display:inline-block; background:#e9eff8; border:1px solid #cbd9ee; border-radius:8px; padding:12px 18px; margin:6px; font-weight:600;">Хэсэглэх алхам</div>
+<dl class="kv"><dt>50</dt><dd>эхлээд хэрэглэхэд тохиромжтой</dd></dl>
+<dl class="kv"><dt>Бага тоо (20)</dt><dd>илүү нарийн хайлт, гэхдээ илүү удаан</dd></dl>
+<dl class="kv"><dt>Их тоо (100)</dt><dd>хурдан, гэхдээ зарим нарийн хэсэг алгасагдаж магадгүй</dd></dl>
+</div>
+<figcaption><strong>"Хэсэглэх алхам"-ын хэмжээ</strong> их/бага байх тусам янз бүр байдаг</figcaption>
+</figure>
+
+<h2>4. Дүрсээр хайх</h2>
+<ol class="steps">
+<li><strong>"2 · Дүрсээр хайх"</strong> табыг нээнэ.</li>
+<li>Хайх гэж буй үсэг, үг, тамга эсвэл тэмдгийн <strong>жижиг тасалсан зураг</strong>-ийг оруулна.</li>
+<li><strong>"Харуулах үр дүнгийн тоо"</strong>-г 8-аар үлдээж болно.</li>
+<li><strong>"Ижил дүрс хайх"</strong> товчийг дарна.</li>
+<li>Баруун талд гарсан зургуудыг харж, хэрэгтэй ижил төстэй хэсгийг сонгоно.</li>
+</ol>
+
+<div class="box good">
+<strong>Сайн хайлтын зөвлөгөө:</strong> Хайх хэсэгт зөвхөн хэрэгтэй үсэг эсвэл үг аль болох дүүрэн орсон байвал сайн. Хэт их хоосон зай, хүрээ, хуруу, сүүдэр орвол үр дүн муудаж болно.
+</div>
+
+<figure>
+<div style="background:#f8f1e8; padding:24px 20px; display:flex; gap:18px; align-items:stretch; flex-wrap:wrap;">
+<div style="flex:1; min-width:200px;">
+<div style="background:#fff; border:2px solid #754b33; border-radius:10px; padding:16px; text-align:center; font-weight:600;">
+⬆️ Энд оруулна<br><small style="font-weight:400;">Тасалсан зураг</small>
+</div>
+</div>
+<div style="flex:2; min-width:240px;">
+<div style="background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px;">
+<strong>Үр дүн:</strong>
+<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px;">
+<div style="background:#eef6ef; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">87%</div>
+<div style="background:#e9eff8; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">72%</div>
+<div style="background:#f8f1e8; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">65%</div>
+<div style="background:#fff3e8; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">51%</div>
+<div style="background:#f8f1e8; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">44%</div>
+<div style="background:#f8f1e8; border-radius:6px; padding:8px; text-align:center; font-size:.85rem;">38%</div>
+</div>
+</div>
+</div>
+</div>
+<figcaption><strong>Зүүн тал</strong> тасалсан зурагаа оруулна. <strong>Баруун тал</strong> ижил төстэй зургууд таарсан хувиар гарч ирнэ.</figcaption>
+</figure>
+
+<h2>5. Онцгой хэлбэрийг шалгах</h2>
+<ol class="steps">
+<li><strong>"3 · Онцгой хэлбэр"</strong> табыг нээнэ.</li>
+<li><strong>"Онцгой хэлбэрийг тооцоолох"</strong> товчийг нэг удаа дарна.</li>
+<li>Тоолол дуусмагцыг <strong>"Явцыг шалгах"</strong> дарна.</li>
+<li><strong>"Газрын зургийг шинэчлэх"</strong> товчийг дарна.</li>
+<li><strong>Том улаан тойрогтой цэгүүд</strong> нь бусдаасаа илүү онцгой дүрстэй байж болох хэсгүүд юм.</li>
+<li>Доорх жагсаалтаас нэг хэсгийг сонгож зургийг нь харна.</li>
+<li>Хэрэгтэй бол <strong>"Галиг оруулах хэсэг рүү илгээх"</strong> товчийг дарна.</li>
+</ol>
+
+<div class="box note">
+<strong>Чухал:</strong> Улаан цэг нь "алдаа" гэсэн үг биш. Энэ нь зүгээр л бусад дүрсээсээ өөр байж магадгүй гэсэн дохио. Эцсийн шийдвэрийг судлаач зураг дээр үндэслэн гаргана.
+</div>
+
+<figure>
+<div style="background:#f8f1e8; padding:24px 20px;">
+<div style="background:#243047; border-radius:10px; padding:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+<div style="flex:1; min-width:180px; background:#2f3e5c; border-radius:8px; padding:12px; color:#f5e6d3; font-size:.9rem;">
+<strong>Газрын зураг</strong><br>
+<small>Өндөр өнгөтэй цэгүүд = ховор хэлбэр</small>
+</div>
+<div style="background:#fff5ee; border:2px solid #754b33; border-radius:8px; padding:12px; flex:1; min-width:180px; font-size:.9rem;">
+<strong>Сонгох жагсаалт</strong><br>
+<small style="color:#5f564f;">Өндөр оноотой цэгүүд доор харагдана</small>
+</div>
+<div style="flex:1; min-width:120px; text-align:center;">
+<span style="display:inline-block; width:22px; height:22px; background:red; border:2px solid #fff; border-radius:50%; vertical-align:middle;"></span>
+<span style="color:#f5e6d3; font-size:.85rem; vertical-align:middle;"> = Онцгой</span>
+</div>
+</div>
+</div>
+<figcaption><strong>Газрын зургаас</strong> улаан цэг сонгож, <strong>жагсаалтаас</strong> сонгон, <strong>баруун талд</strong> зураг харна.</figcaption>
+</figure>
+
+<h2>6. Галиг оруулах ба хадгалах</h2>
+<ol class="steps">
+<li><strong>"4 · Галиг оруулах"</strong> табыг нээнэ.</li>
+<li>Зүүн талд эх зургийг харна. Хэрэв та 3-р хэсгээс илгээсэн бол зураг автоматаар орсон байна.</li>
+<li>Баруун талын <strong>"Галиг текст"</strong> талбарт уншсан текстээ бичнэ.</li>
+<li>Туслах товчнуудыг дарж <em>бөгөөд, ажгуу, мөн, тэд</em> гэх үгийг нэмэх боломжтой.</li>
+<li>Текстээ дахин нягтална: зай, цэг, таслал, мөр шилжилт бүгд таны хүссэнээр байгаэ эсэхийг харна.</li>
+<li><strong>"Галигийг хадгалах"</strong> товчийг дарна.</li>
+<li>Доорх "Сүүлд хадгалсан таван галиг" жагсаалтаас хадгалсан эсэхээ шалгана.</li>
+</ol>
+
+<div class="box good">
+<strong>Текстийн хамгаалалт:</strong> Таны оруулсан текстийг тайрах, цэвэрлэх, үгийн хоорондох зайг устгах, цэг тэмдгийг засах үйлдэл хийдэггүй.<br>Та бичсэнээ яг тэр хэлбэрээр нь хадгална.
+</div>
+
+<figure>
+<div style="background:#f8f1e8; padding:24px 20px;">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+<div style="background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; text-align:center;">
+<strong>Туслах товчнууд</strong><br><small>Доор байрлана</small>
+<div style="margin-top:8px; display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+<div style="background:#e9eff8; border:1px solid #cbd9ee; border-radius:6px; padding:6px 12px; font-weight:600; font-size:.85rem;">бөгөөд</div>
+<div style="background:#e9eff8; border:1px solid #cbd9ee; border-radius:6px; padding:6px 12px; font-weight:600; font-size:.85rem;">ажгуу</div>
+<div style="background:#e9eff8; border:1px solid #cbd9ee; border-radius:6px; padding:6px 12px; font-weight:600; font-size:.85rem;">мөн</div>
+<div style="background:#e9eff8; border:1px solid #cbd9ee; border-radius:6px; padding:6px 12px; font-weight:600; font-size:.85rem;">тэд</div>
+</div>
+</div>
+<div style="background:#fff; border:2px solid #754b33; border-radius:10px; padding:14px;">
+<strong>Жишээ:</strong> Хэрэв та <em>«Эрдэнэ»</em> бичээд <strong>«бөгөөд»</strong> товч дарвал:<br>
+→ <strong>«Эрдэнэбөгөөд »</strong> гэж дэлгэц дээр гарч ирнэ
+</div>
+</div>
+</div>
+<figcaption><strong>Туслах товчнууд</strong> нь бичих үгийн төгсгөлд автоматаар нэмэгдэнэ. Зай тэргүүтэй нэмэгдэх тул тухайн үгийг бичсэний дараа дарахад зөв бичигдэнэ.</figcaption>
+</figure>
+
+<h2>7. Хамгийн энгийн ажлын жишээ</h2>
+<ol class="steps">
+<li>Нэг судрын 30 зургийг ZIP файл болгоно.</li>
+<li>Зургийг сан руу оруулна.</li>
+<li>Сонирхож буй ховор үсгийн жижиг хэсгийг тасалж «Дүрсээр хайх» хэсэгт оруулна.</li>
+<li>Ижил төстэй гарсан зургуудыг харьцуулна.</li>
+<li>Сонирхолтой олдворын зургийг «Галиг оруулах» хэсэг рүү илгээнэ.</li>
+<li>Уншсан текстээ галиглаж хадгална.</li>
+</ol>
+
+<h2>8. Асуудал гарвал</h2>
+<table>
+<tr><th>Асуудал</th><th>Эхлээд юу шалгах вэ?</th></tr>
+<tr><td>Зураг орохгүй байна</td><td>Файл нь ZIP мөн эсэх, дотор нь JPG/JPEG/PNG зураг байгаа эсэхийг шалгана.</td></tr>
+<tr><td>Хайлт хоосон байна</td><td>Эхлээд зургийн сан руу амжилттай орсон эсэхийг 1-р табын хариунаас шалгана.</td></tr>
+<tr><td>Хайлт муу байна</td><td>Илүү тод, жижиг, хэрэгтэй дүрсээ дүүрэн багтаасан тасалсан зураг ашиглана.</td></tr>
+<tr><td>Тоолол удаан байна</td><td>Олон мянган зурагтай үед энэ нь хэвийн. Хүлээгээд дараа нь «Газрын зургийг шинэчлэх» товчийг дарна.</td></tr>
+<tr><td>Нэвтэрч чадахгүй байна</td><td>Нэвтрэх нэр, нууц үгээ дахин нягтална. Том/жижиг үсгийг анхаарна.</td></tr>
+<tr><td>Галиг хадгалагдаагүй</td><td>«Хадгалсан» гэсэн урдуур дэлгэц дээр байна уу, доорх хүснэгтэд байна уу шалгана. Алдаа гарсан бол дээр заавар гарч ирнэ.</td></tr>
+</table>
+
+<h2>9. Сайн дадал</h2>
+<ul>
+<li>Нэг эх сурвалжийн зургийг нэг ZIP файлд хийх нь эмх цэгцтэй.</li>
+<li>Хадгалахаасаа өмнө галигээ нэг удаа дахин унш.</li>
+<li>Онцгой хэлбэрийн оноог зөвхөн туслах дохио гэж ойлго.</li>
+<li>Систем ажиллаж байх үед серверийг унтрааж болохгүй.</li>
+<li>Нууц үгээ бусадтай бүү хуваалц.</li>
+</ul>
+
+<p class="subtitle" style="margin-top:2.5rem; text-align:center; font-size:.88rem;">Энэ гарын авлагыг Монгол Шунхан Ганжуурын үндсэн дэлгэцийн <strong>«Дэлгэрэнгүй гарын авлага нээх»</strong> холбоосоор хүссэн үедээ нээж билээ.</p>
+</main>
+</body>
+</html>

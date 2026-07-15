@@ -1,0 +1,62 @@
+# ---- Ganjuur .gitignore ----
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+ganjuur_env/
+venv/
+.venv/
+
+# Environment / secrets — NEVER commit
+.env
+*.env
+.env.*
+
+# Debug / one-off scripts (kept locally, not part of the project)
+analyze_bdrc.py
+analyze_bdrc2.py
+analyze_bdrc3.py
+analyze_bdrc4.py
+check2.py
+check3.py
+check_qdrant.py
+check_raw.py
+check_raw2.py
+check_snap.py
+compilecheck.py
+diag_check.py
+extract_urls.py
+fix1.py
+fix_quotes.py
+scan_curlies.py
+peek_manifest.py
+_build_pitch_docx.py
+
+# Deployment staging artifacts (.b64 intermediate files)
+*.b64
+longcat_b64correct.txt
+
+# Debug images / local scan dumps / screenshots
+*.jpg
+!favicon.png
+scan/
+ss/
+
+# Archives and local data dumps
+*.zip
+
+# OS junk
+Thumbs.db
+.DS_Store
+ehthumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Pitch build outputs (regenerable)
+SudrynKhel_Pitch_Angles.docx
