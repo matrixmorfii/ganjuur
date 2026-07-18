@@ -1,5 +1,24 @@
-# 0. Shared upstream patches — must be imported before any Gradio import.
-import grad_patch
+# ==========================================
+# 0. CRITICAL UPSTREAM PATCHES (СЭРГЭЭВ)
+# ==========================================
+import gradio_client.utils
+import gradio.networking
+
+# Patch 1: Pydantic v2 Schema Bug (TypeError: argument of type 'bool' is not iterable)
+_orig_json_schema = gradio_client.utils._json_schema_to_python_type
+def _patched_json_schema(schema, defs=None):
+    if isinstance(schema, bool): return "any"
+    return _orig_json_schema(schema, defs)
+gradio_client.utils._json_schema_to_python_type = _patched_json_schema
+
+_orig_get_type = gradio_client.utils.get_type
+def _patched_get_type(schema):
+    if isinstance(schema, bool): return "bool"
+    return _orig_get_type(schema)
+gradio_client.utils.get_type = _patched_get_type
+
+# Patch 2: Localhost Ping Error (ValueError: When localhost is not accessible...)
+gradio.networking.url_ok = lambda url: True
 
 # ==========================================
 # 1. CONFIGURATION & IMPORTS
@@ -31,12 +50,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 # --- PATHS & SETTINGS ---
-from config import (
-    BASE_DIR, SCANS_DIR, CROPS_DIR, VECTORDB_PATH, DB_PATH,
-    COLLECTION_NAME, VECTOR_DIM, BATCH_SIZE, LOGO_PATH, FAVICON_PATH,
-    MAX_FILES,
-)
-MAX_TOTAL_PIXELS = 10_000_000_000  # project-specific override
+BASE_DIR = Path("/home/trinity/ganjuur")
+SCANS_DIR = BASE_DIR / "data/scans"
+CROPS_DIR = BASE_DIR / "data/ganjuur_crops/db_frames"
+VECTORDB_PATH = BASE_DIR / "vectordb"
+COLLECTION_NAME = "ganjuur_frames"
+VECTOR_DIM = 768
+BATCH_SIZE = 32 
+
+LOGO_PATH = "image_566068.jpg"
+FAVICON_PATH = "asset/favicon.png"
+DB_PATH = BASE_DIR / "transliterations.db"
+
+MAX_FILES = 5000
 MAX_TOTAL_PIXELS = 10_000_000_000
 
 SCANS_DIR.mkdir(parents=True, exist_ok=True)
