@@ -32,7 +32,8 @@ so the reading of each form is preserved exactly as entered.
 
 - All **108 volumes** ingested from BDRC (83,466 content pages).
 - Qdrant running in Docker (`qdrant_ganjuur`), HTTP on `127.0.0.1:6333`.
-- Gradio app served at `:7860`, managed by `systemd ganjuur.service`.
+- Gradio app served at `:7860`, managed by `systemd ganjuur.service`
+  (runs `longcat.py` as the production entrypoint).
 - Three collections: `ganjuur_frames`, `ganjuur_genealogy`, `ganjuur_words`.
 - Every vector point carries BDRC attribution in its payload
   (`bdrc_url`, `bdrc_resource_id`, `bdrc_volume`, `bdrc_access`).
@@ -47,13 +48,18 @@ so the reading of each form is preserved exactly as entered.
 ├── .gitignore                 # excludes debug artifacts, .env, scan dumps
 │
 ├── src/                       # production Python source
-│   ├── app.py                 # single-file Gradio app (main entrypoint)
-│   ├── gpt.py                 # alternative single-file app (research/experimental)
-│   ├── longcat.py             # entrypoint: ingest ⇄ search ⇄ export pipeline
+│   ├── longcat.py             # ★ PRODUCTION — the running entrypoint (systemd)
+│   ├── gpt.py                 # alternative app build (research/experimental)
+│   ├── app.py                 # alternative app build (research/experimental)
 │   ├── ingest_from_bdrc.py    # BDRC IIIF batch ingester (108 volumes → Qdrant)
 │   ├── appvmeta.py            # app variant / metadata tooling
 │   ├── snapshot_v5.py         # production snapshot builder (COW hardlink clones)
+│   ├── grad_patch.py          # shared Gradio compatibility patches
+│   ├── config.py              # centralized paths/settings (env-var overridable)
 │   └── archive/               # older single-file builds (kept for reference)
+│       ├── app.py.orig           # original copy before refactor
+│       ├── gpt.py.orig           # original copy before refactor
+│       ├── longcat.py.orig       # original copy before refactor
 │       ├── app06_24.py
 │       ├── app06_24_3.py
 │       └── ganjuur_v2.py
