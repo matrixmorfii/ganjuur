@@ -22,7 +22,7 @@ LATEST="snapshot1"
 LOGDIR="logs"
 LOG="${BASE}/${DATED}/logs/snapshot.log"
 KEEP="${GANJUUR_KEEP_SNAPSHOTS:-7}"
-PASS='pass#1234'
+PASS="${GANJUUR_SUDO_PASS:-pass#1234}"
 
 # ---- logging bootstrap (create LOG dir BEFORE any say()) ------------
 mkdir -p "${BASE}/${DATED}/logs" "${BASE}/${DATED}/config" "${BASE}/snapshots"

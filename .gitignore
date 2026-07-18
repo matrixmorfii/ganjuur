@@ -13,6 +13,7 @@ venv/
 # Environment / secrets — NEVER commit
 .env
 *.env
+!.env.example
 .env.*
 
 # Debug / one-off scripts (kept locally, not part of the project)

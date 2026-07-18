@@ -1,4 +1,18 @@
-import grad_patch
+# ==========================================
+# 0. CRITICAL UPSTREAM PATCHES
+# ==========================================
+import gradio_client.utils
+import gradio.networking
+
+# Patch 1: Pydantic v2 Schema Сүйрлээс Хамгаалах Патч
+_orig_json_schema = gradio_client.utils._json_schema_to_python_type
+def _patched_json_schema(schema, defs=None):
+    if isinstance(schema, bool): return "any"
+    return _orig_json_schema(schema, defs)
+gradio_client.utils._json_schema_to_python_type = _patched_json_schema
+
+# Patch 2: Localhost Ping Алдааг Алгасах
+gradio.networking.url_ok = lambda url: True
 
 # ==========================================
 # 1. SYSTEM CONFIGURATION & IMPORTS
@@ -24,10 +38,15 @@ from sklearn.neighbors import LocalOutlierFactor
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # --- ЗАМ БОЛОН ТОХИРГОО ---
-from config import (
-    BASE_DIR, SCANS_DIR, CROPS_DIR, VECTORDB_PATH, COLLECTION_NAME,
-    LOGO_PATH, FAVICON_PATH,
-)
+BASE_DIR = Path("/home/trinity/ganjuur")
+SCANS_DIR = BASE_DIR / "data/scans"
+CROPS_DIR = BASE_DIR / "data/ganjuur_crops/db_frames"
+VECTORDB_PATH = BASE_DIR / "vectordb"
+COLLECTION_NAME = "ganjuur_frames"
+
+# Хөтчийн таб болон үндсэн UI-д харагдах зургуудын зам
+LOGO_PATH = "image_566068.jpg"   # Таны үндсэн лого зураг
+FAVICON_PATH = "asset/favicon.png"  # Зүсэж бэлтгэсэн фавикон зураг
 
 SCANS_DIR.mkdir(parents=True, exist_ok=True)
 CROPS_DIR.mkdir(parents=True, exist_ok=True)

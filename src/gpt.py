@@ -10,34 +10,7 @@
 # =============================================================================
 # 0. CRITICAL UPSTREAM PATCHES — MUST STAY BEFORE ALL OTHER IMPORTS
 # =============================================================================
-import gradio_client.utils
-import gradio.networking
-
-_orig_json_schema_to_python_type = gradio_client.utils._json_schema_to_python_type
-
-
-def _patched_json_schema_to_python_type(schema, defs=None):
-    """Compatibility patch for Gradio's Pydantic-v2 boolean JSON schemas."""
-    if isinstance(schema, bool):
-        return "any"
-    return _orig_json_schema_to_python_type(schema, defs)
-
-
-_orig_get_type = gradio_client.utils.get_type
-
-
-def _patched_get_type(schema):
-    """Compatibility patch paired with _patched_json_schema_to_python_type."""
-    if isinstance(schema, bool):
-        return "bool"
-    return _orig_get_type(schema)
-
-
-gradio_client.utils._json_schema_to_python_type = _patched_json_schema_to_python_type
-gradio_client.utils.get_type = _patched_get_type
-
-# Required for LAN/Nginx deployment with the currently pinned Gradio build.
-gradio.networking.url_ok = lambda url: True
+import grad_patch
 
 # =============================================================================
 # 1. IMPORTS, CONFIGURATION, AND STORAGE

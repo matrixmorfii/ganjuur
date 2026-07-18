@@ -32,11 +32,9 @@ import time
 from pathlib import Path
 
 # ============================= config ======================================
-SRC = Path("/home/trinity/ganjuur")
-BASE = Path("/home/trinity/data/prod_ready_ganjuur")
+from config import BASE_DIR as SRC, PROD_READY_BASE as BASE, SUDO_PASS
 REPO_GANJUUR_HOME = SRC
 KEEP = int(os.environ.get("GANJUUR_KEEP_SNAPSHOTS", "7"))
-SUDO_PASS = "pass#1234"              # local sudo for docker/rsync (never logged)
 # ===========================================================================
 
 TS = dt.datetime.now().strftime("%Y%m%d_%H%M%S")

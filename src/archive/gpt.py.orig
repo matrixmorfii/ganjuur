@@ -1,12 +1,47 @@
-# Монгол Шунхан Ганжуур — нэг файлын програм
+# Ganjuur AI — single-file application
 #
-# Хүснэгтэд ашиглагдах орчны хувьсагчууд:
+# Required environment variables for production:
 #   GANJUUR_BASE_DIR=/home/trinity/ganjuur
 #   QDRANT_HOST=localhost  QDRANT_PORT=6333  QDRANT_GRPC_PORT=6334
-#   GANJUUR_USER=<хэрэглэгч>  GANJUUR_PASS=<нууц үг>
+#   GANJUUR_USER=<username>  GANJUUR_PASS=<strong-password>
+# Optional local development only:
+#   QDRANT_LOCAL_PATH=/path/to/local/qdrant-storage
 
-import grad_patch
+# =============================================================================
+# 0. CRITICAL UPSTREAM PATCHES — MUST STAY BEFORE ALL OTHER IMPORTS
+# =============================================================================
+import gradio_client.utils
+import gradio.networking
 
+_orig_json_schema_to_python_type = gradio_client.utils._json_schema_to_python_type
+
+
+def _patched_json_schema_to_python_type(schema, defs=None):
+    """Compatibility patch for Gradio's Pydantic-v2 boolean JSON schemas."""
+    if isinstance(schema, bool):
+        return "any"
+    return _orig_json_schema_to_python_type(schema, defs)
+
+
+_orig_get_type = gradio_client.utils.get_type
+
+
+def _patched_get_type(schema):
+    """Compatibility patch paired with _patched_json_schema_to_python_type."""
+    if isinstance(schema, bool):
+        return "bool"
+    return _orig_get_type(schema)
+
+
+gradio_client.utils._json_schema_to_python_type = _patched_json_schema_to_python_type
+gradio_client.utils.get_type = _patched_get_type
+
+# Required for LAN/Nginx deployment with the currently pinned Gradio build.
+gradio.networking.url_ok = lambda url: True
+
+# =============================================================================
+# 1. IMPORTS, CONFIGURATION, AND STORAGE
+# =============================================================================
 import atexit
 import logging
 import multiprocessing as mp
@@ -37,12 +72,8 @@ warnings.filterwarnings("ignore", message=r"IMPORTANT: You are using gradio vers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("ganjuur")
 
-# =============================================================================
-# 1. ИМПОРТ, ТОХИРГОО БА ХАДГАЛАХ ТӨВ
-# =============================================================================
-
 def load_environment_file() -> None:
-    """.env файлаас KEY=VALUE тохиргоог ачаална. Орчны хувьсагчийг дарахгүй."""
+    """Load simple KEY=VALUE settings from .env without overriding real environment values."""
     env_path = Path(__file__).resolve().parent / ".env"
     if not env_path.exists():
         return
@@ -56,7 +87,6 @@ def load_environment_file() -> None:
         if key:
             os.environ.setdefault(key, value)
 
-
 load_environment_file()
 
 BASE_DIR = Path(os.getenv("GANJUUR_BASE_DIR", "/home/trinity/ganjuur")).expanduser()
@@ -69,7 +99,8 @@ VECTOR_DIM = 768
 BATCH_SIZE = int(os.getenv("GANJUUR_BATCH_SIZE", "32"))
 DEFAULT_STRIDE = 50
 
-# Хязгаарлалтууд алдагдуулах ёсгүй. Зураг нээгдэхдэсаа илүү ихсаг RAM эзэлнэ.
+# Upload limits are deliberately bounded. Decoded images consume much more RAM
+# than their compressed ZIP size.
 MAX_FILES = int(os.getenv("GANJUUR_MAX_FILES", "5000"))
 MAX_ARCHIVE_BYTES = int(os.getenv("GANJUUR_MAX_ARCHIVE_BYTES", str(10 * 1024**3)))
 MAX_MEMBER_BYTES = int(os.getenv("GANJUUR_MAX_MEMBER_BYTES", str(100 * 1024**2)))
@@ -86,7 +117,7 @@ QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_GRPC_PORT = int(os.getenv("QDRANT_GRPC_PORT", "6334"))
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-QDRANT_LOCAL_PATH = os.getenv("QDRANT_LOCAL_PATH")  # Зөвхөн хөгжүүлэлтийн орчинд.
+QDRANT_LOCAL_PATH = os.getenv("QDRANT_LOCAL_PATH")  # Explicit development-only escape hatch.
 LOCAL_VECTORDB_PATH = Path(os.getenv("GANJUUR_LOCAL_VECTORDB_PATH", str(BASE_DIR / "vectordb")))
 
 for directory in (SCANS_DIR, CROPS_DIR):
@@ -107,12 +138,12 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def make_qdrant_client(require_docker: bool = False) -> QdrantClient:
-    """Docker Qdrant-ыг ашиглана. Шаардлагатай бол Docker-ыг л шаардана."""
+def make_qdrant_client() -> QdrantClient:
+    """Use Docker Qdrant when it is healthy; preserve local data as emergency fallback."""
     global qdrant_backend
-    if QDRANT_LOCAL_PATH and not require_docker:
+    if QDRANT_LOCAL_PATH:
         qdrant_backend = "local"
-        log.warning("Тохиргооны дагуу локал Qdrant ашиглагдаж байна: %s", QDRANT_LOCAL_PATH)
+        log.warning("Using explicitly configured local Qdrant path: %s", QDRANT_LOCAL_PATH)
         return QdrantClient(path=QDRANT_LOCAL_PATH)
 
     remote = QdrantClient(
@@ -126,25 +157,21 @@ def make_qdrant_client(require_docker: bool = False) -> QdrantClient:
     try:
         remote.get_collections()
         qdrant_backend = "docker"
-        log.info("Docker Qdrant холбогдлоо: %s:%s", QDRANT_HOST, QDRANT_PORT)
+        log.info("Connected to Docker Qdrant at %s:%s", QDRANT_HOST, QDRANT_PORT)
         return remote
     except Exception as remote_error:
         remote.close()
-        if require_docker:
-            raise RuntimeError(
-                f"Docker Qdrant шаардлагатай боловч боломжгүй байна: {remote_error}"
-            ) from remote_error
         if LOCAL_VECTORDB_PATH.exists():
             qdrant_backend = "local"
             log.warning(
-                "Docker Qdrant боломжгүй (%s). Локал санг ашиглаж байна: %s",
+                "Docker Qdrant is unavailable (%s). Safely using the existing local vector store: %s",
                 remote_error,
                 LOCAL_VECTORDB_PATH,
             )
             return QdrantClient(path=str(LOCAL_VECTORDB_PATH))
         raise RuntimeError(
-            f"Docker Qdrant {QDRANT_HOST}:{QDRANT_PORT} боломжгүй, "
-            f"локал санд мөн боломжгүй. Өөрчлэлт хийгдсэнгүй."
+            f"Cannot reach Docker Qdrant at {QDRANT_HOST}:{QDRANT_PORT}, "
+            f"and no local vector store exists at {LOCAL_VECTORDB_PATH}. No data was changed."
         ) from remote_error
 
 
@@ -155,8 +182,10 @@ def ensure_collection(client: QdrantClient) -> None:
             vectors_config=models.VectorParams(size=VECTOR_DIM, distance=models.Distance.COSINE),
             hnsw_config=models.HnswConfigDiff(m=16, ef_construct=100),
         )
-        log.info("Qdrant цуглуулга үүсгэлээ: %s", COLLECTION_NAME)
+        log.info("Created Qdrant collection: %s", COLLECTION_NAME)
 
+    # These are idempotent on current Qdrant releases. If an index already
+    # exists, Qdrant keeps the existing compatible definition.
     for field, schema in (
         ("umap_x", models.PayloadSchemaType.FLOAT),
         ("anomaly_score", models.PayloadSchemaType.FLOAT),
@@ -166,15 +195,13 @@ def ensure_collection(client: QdrantClient) -> None:
         try:
             client.create_payload_index(COLLECTION_NAME, field, field_schema=schema)
         except Exception as exc:
-            log.info("Пэйлоод индэс өөрчлөгдөөгүй: %s: %s", field, exc)
+            log.info("Payload index %s unchanged or unavailable: %s", field, exc)
 
 
 def db_connection() -> sqlite3.Connection:
     connection = sqlite3.connect(str(DB_PATH), check_same_thread=False, timeout=30)
     connection.execute("PRAGMA journal_mode=WAL;")
     connection.execute("PRAGMA synchronous=NORMAL;")
-    connection.execute("PRAGMA busy_timeout=5000;")
-    connection.execute("PRAGMA foreign_keys=ON;")
     return connection
 
 
@@ -204,44 +231,38 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 status TEXT NOT NULL,
                 message TEXT NOT NULL,
-                backend TEXT NOT NULL DEFAULT 'docker',
                 started_at TEXT NOT NULL,
                 finished_at TEXT
             )
             """
         )
-        # Defensive migration: older databases created by gpt.py lack the
-        # backend column. Add it if missing so analytics_status() works.
-        existing_cols = {row[1] for row in connection.execute("PRAGMA table_info(analytics_jobs)")}
-        if "backend" not in existing_cols:
-            connection.execute("ALTER TABLE analytics_jobs ADD COLUMN backend TEXT NOT NULL DEFAULT 'docker'")
 
 
-def update_analytics_job(job_id: str, status: str, message: str, backend: str = "docker", finished: bool = False) -> None:
+def update_analytics_job(job_id: str, status: str, message: str, finished: bool = False) -> None:
     with db_lock, db_connection() as connection:
         connection.execute(
-            "UPDATE analytics_jobs SET status=?, message=?, backend=?, finished_at=? WHERE id=?",
-            (status, message, backend, utc_now() if finished else None, job_id),
+            "UPDATE analytics_jobs SET status=?, message=?, finished_at=? WHERE id=?",
+            (status, message, utc_now() if finished else None, job_id),
         )
 
 
-def latest_analytics_job() -> tuple[str, str, str] | None:
+def latest_analytics_job() -> tuple[str, str] | None:
     with db_lock, db_connection() as connection:
         row = connection.execute(
-            "SELECT status, message, backend FROM analytics_jobs ORDER BY started_at DESC LIMIT 1"
+            "SELECT status, message FROM analytics_jobs ORDER BY started_at DESC LIMIT 1"
         ).fetchone()
     return row
 
 
 # =============================================================================
-# 2. ЗАГВАР БА ЗУРГЫН ТУСЛАХ ФУНКЦҮҮД
+# 2. MODEL AND IMAGE HELPERS
 # =============================================================================
 def get_model_and_processor() -> tuple[AutoModel, AutoImageProcessor]:
-    """Загварыг анхны удаад ачаална. Аналитик ажилч CUDA-г ачаалдаггүй."""
+    """Lazy loading keeps analytics worker processes from initializing CUDA."""
     global _model, _processor
     with model_lock:
         if _model is None or _processor is None:
-            log.info("DINOv2-base ачааллаж байна: %s", DEVICE.upper())
+            log.info("Loading DINOv2-base on %s", DEVICE.upper())
             _processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
             _model = AutoModel.from_pretrained("facebook/dinov2-base").to(DEVICE)
             _model.eval()
@@ -265,7 +286,7 @@ def get_embeddings_batch(img_bgr_list: list[np.ndarray]) -> list[list[float]]:
 
 
 def process_manuscript_image(image_bgr: np.ndarray) -> np.ndarray:
-    """Ногоон сувгийн CLAHE руу тодорхойлсон өмнөх арга."""
+    """Keep the existing cinnabar-focused green-channel and CLAHE approach."""
     green_channel = image_bgr[:, :, 1]
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
     enhanced = clahe.apply(green_channel)
@@ -276,15 +297,11 @@ def save_frame_sharded(frame: np.ndarray, page_id: str, frame_index: int) -> tup
     frame_id = str(uuid.uuid4())
     shard = CROPS_DIR / frame_id[:2] / frame_id[2:4]
     shard.mkdir(parents=True, exist_ok=True)
-    # Sanitize page_id so that characters like ':' or '/' (e.g. from BDRC
-    # resource IDs like "bdrc:MW4CZ5370/vol089/p0023") don't end up as path
-    # separators in the filename.
-    safe_page_id = page_id.replace(":", "_").replace("/", "_")
-    filename = f"{frame_id}_p{safe_page_id}_f{frame_index:06d}.webp"
+    filename = f"{frame_id}_p{page_id}_f{frame_index:06d}.webp"
     full_path = shard / filename
     ok = cv2.imwrite(str(full_path), frame, [cv2.IMWRITE_WEBP_QUALITY, 85])
     if not ok:
-        raise IOError(f"Хүсэгтэй зураг бичих боломжгүй: {full_path}")
+        raise IOError(f"Could not write frame: {full_path}")
     return str(full_path), frame_id
 
 
@@ -296,12 +313,11 @@ def remove_paths(paths: Iterable[str]) -> None:
             if crops_root in candidate.parents:
                 candidate.unlink(missing_ok=True)
         except OSError:
-            log.warning("Дутуу хүсгийг устгаж чадсангүй: %s", path)
+            log.warning("Could not remove incomplete frame: %s", path)
 
 
-def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_id: str, extra_payload: dict | None = None) -> int:
-    """Нэг багц оруулах; алдаатай багцын зургуудыг л устгана.
-    extra_payload: supplementary fields merged into every point (e.g. BDRC attribution URL)."""
+def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_id: str) -> int:
+    """Embed/upsert one batch; remove only frames from a failed batch."""
     if not crops:
         return 0
     try:
@@ -317,7 +333,6 @@ def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_
                     "embedding_model": "facebook/dinov2-base",
                     "preprocessing": "green-channel-clahe-v1",
                     "ingested_at": utc_now(),
-                    **(extra_payload or {}),
                 },
             )
             for frame_id, path, vector in zip(ids, paths, vectors)
@@ -326,12 +341,12 @@ def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_
         return len(points)
     except Exception as exc:
         remove_paths(paths)
-        log.exception("Оруулах/upsert алдаа %s: %s", page_id, exc)
-        raise RuntimeError(f"Хуудас индекслэхэд алдаа гарлаа '{page_id}': {exc}") from exc
+        log.exception("Embedding/Qdrant upsert failed for %s: %s", page_id, exc)
+        raise RuntimeError(f"Failed to index page '{page_id}': {exc}") from exc
 
 
 # =============================================================================
-# 3. ОРУУЛАХ БА ХАЙХ
+# 3. INGESTION AND SEARCH
 # =============================================================================
 def uploaded_path(upload: Any) -> Path | None:
     if upload is None:
@@ -343,31 +358,31 @@ def uploaded_path(upload: Any) -> Path | None:
 def safe_image_members(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
     members = [info for info in archive.infolist() if Path(info.filename).suffix.lower() in SUPPORTED_EXTENSIONS]
     if not members:
-        raise ValueError("ZIP файлд JPG эсвэл PNG зураг байхгүй байна.")
+        raise ValueError("The ZIP file contains no JPG or PNG images.")
     if len(members) > MAX_FILES:
-        raise ValueError(f"ZIP файлд {len(members):,} зураг байна; хязгаар {MAX_FILES:,}.")
+        raise ValueError(f"The ZIP contains {len(members):,} images; the limit is {MAX_FILES:,}.")
     uncompressed = sum(info.file_size for info in members)
     if uncompressed > MAX_ARCHIVE_BYTES:
-        raise ValueError("Нээгдсэн зургийн хэмжээ серверийн хязгаараас хэтэрсэн байна.")
+        raise ValueError("The uncompressed image data exceeds this server's safety limit.")
     for info in members:
         if info.file_size > MAX_MEMBER_BYTES:
-            raise ValueError(f"'{Path(info.filename).name}' нээгдэхэд хэт том байна.")
+            raise ValueError(f"'{Path(info.filename).name}' is too large after extraction.")
         if info.compress_size and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO:
-            raise ValueError(f"'{Path(info.filename).name}' хэлбэржүүлэлт аюултай байна.")
+            raise ValueError(f"'{Path(info.filename).name}' has an unsafe compression ratio.")
     return sorted(members, key=lambda info: info.filename.lower())
 
 
 def handle_zip_ingestion(zip_file_obj: Any, stride: int, progress=gr.Progress()) -> str:
     path = uploaded_path(zip_file_obj)
     if path is None or not path.exists():
-        return "❌ ZIP файл оруулна уу."
+        return "❌ Upload a ZIP file containing JPG or PNG page scans."
     if path.suffix.lower() != ".zip":
-        return "❌ .zip өргөтгөлтэй файл оруулна уу."
+        return "❌ Please upload a .zip archive."
     if stride <= 0:
-        return "❌ Алхам эерэг тоо байх ёстой."
+        return "❌ Stride must be a positive number."
 
     try:
-        progress(0.02, desc="Архивыг шалгаж байна…")
+        progress(0.02, desc="Checking archive safely…")
         with zipfile.ZipFile(path, "r") as archive:
             members = safe_image_members(archive)
             total_pixels = 0
@@ -376,22 +391,22 @@ def handle_zip_ingestion(zip_file_obj: Any, stride: int, progress=gr.Progress())
             skipped: list[str] = []
 
             for image_number, member in enumerate(members, start=1):
-                progress(0.03 + 0.97 * (image_number - 1) / len(members), desc=f"Боловсруулж байна {image_number}/{len(members)}: {Path(member.filename).name}")
+                progress(0.03 + 0.97 * (image_number - 1) / len(members), desc=f"Processing {image_number}/{len(members)}: {Path(member.filename).name}")
                 try:
                     with archive.open(member) as handle:
                         raw = np.frombuffer(handle.read(), dtype=np.uint8)
                     image_bgr = cv2.imdecode(raw, cv2.IMREAD_COLOR)
                     if image_bgr is None:
-                        skipped.append(f"{Path(member.filename).name} (тайгдаагүй)")
+                        skipped.append(f"{Path(member.filename).name} (could not decode)")
                         continue
                     height, width = image_bgr.shape[:2]
                     image_pixels = height * width
                     if image_pixels > MAX_IMAGE_PIXELS:
-                        skipped.append(f"{Path(member.filename).name} (хэт том)")
+                        skipped.append(f"{Path(member.filename).name} (image is too large)")
                         continue
                     total_pixels += image_pixels
                     if total_pixels > MAX_TOTAL_PIXELS:
-                        return "❌ Боловсруулах зогссон: нийт зургийн хэмжээ хязгаараас хэтэрсэн."
+                        return "❌ Processing stopped safely: the archive exceeds the total decoded-image limit."
 
                     page_id = Path(member.filename).stem
                     processed = process_manuscript_image(image_bgr)
@@ -418,28 +433,29 @@ def handle_zip_ingestion(zip_file_obj: Any, stride: int, progress=gr.Progress())
                         indexed_frames += flush_batch(crops, paths, ids, page_id)
                     total_frames += page_frames
                 except Exception as exc:
-                    log.exception("Амжилтгүй болсон %s", member.filename)
+                    log.exception("Failed to process %s", member.filename)
                     skipped.append(f"{Path(member.filename).name} ({exc})")
 
+                # Promptly release per-page decoded images before the next ZIP entry.
                 del raw, image_bgr
 
-        progress(1.0, desc="Дууссан")
+        progress(1.0, desc="Finished")
         message = [
-            "## ✅ Оруулаж дууссан",
-            f"- **Уншиж авсан хуудас:** {len(members):,}",
-            f"- **Үүсгэсэн хүсэг:** {total_frames:,}",
-            f"- **Индэслэсэн хүсэг:** {indexed_frames:,}",
-            f"- **Алхам:** {stride}px",
+            "## ✅ Ingestion complete",
+            f"- **Pages read:** {len(members):,}",
+            f"- **Frames created:** {total_frames:,}",
+            f"- **Frames indexed:** {indexed_frames:,}",
+            f"- **Stride:** {stride}px",
         ]
         if skipped:
             preview = "; ".join(skipped[:5])
-            message.append(f"- **Алгассан:** {len(skipped)} — {preview}")
+            message.append(f"- **Skipped:** {len(skipped)} — {preview}")
         return "\n".join(message)
     except zipfile.BadZipFile:
-        return "❌ Энэ файл хүчинтэй ZIP файл биш байна."
+        return "❌ This file is not a valid ZIP archive."
     except Exception as exc:
-        log.exception("ZIP оруулах амжилтгүй")
-        return f"❌ Оруулаж чадсангүй: {exc}"
+        log.exception("ZIP ingestion failed")
+        return f"❌ Ingestion could not start: {exc}"
 
 
 def execute_visual_query(image_rgb: np.ndarray, top_k: int) -> list[tuple[str, str]]:
@@ -452,22 +468,22 @@ def execute_visual_query(image_rgb: np.ndarray, top_k: int) -> list[tuple[str, s
             collection_name=COLLECTION_NAME,
             query=vector,
             limit=int(top_k),
-            with_payload=["source", "local_path"],
+            with_payload=True,
         )
         results: list[tuple[str, str]] = []
         for point in response.points:
             payload = point.payload or {}
             frame_path = payload.get("local_path")
             if frame_path and Path(frame_path).exists():
-                results.append((str(frame_path), f"{point.score * 100:.1f}% таарч байна · {payload.get('source', 'Unknown source')}"))
+                results.append((str(frame_path), f"{point.score * 100:.1f}% match · {payload.get('source', 'Unknown source')}"))
         return results
     except Exception as exc:
-        log.exception("Хайлт амжилтгүй")
-        raise gr.Error(f"Хайлт амжилтгүй боллоо: {exc}") from exc
+        log.exception("Visual search failed")
+        raise gr.Error(f"Search failed: {exc}") from exc
 
 
 # =============================================================================
-# 4. АНАЛИТИК — ТУСДАА ПРОЦЕСС, ХАДГАЛСАН АЖЛЫН БАЙДАЛ
+# 4. ANALYTICS — ISOLATED PROCESS WITH PERSISTED JOB STATE
 # =============================================================================
 def scroll_all_vectors(client: QdrantClient) -> tuple[list[Any], np.ndarray]:
     ids: list[Any] = []
@@ -491,16 +507,16 @@ def scroll_all_vectors(client: QdrantClient) -> tuple[list[Any], np.ndarray]:
 
 
 def analytics_worker(job_id: str) -> None:
-    """Тусдаа ажиллана; DINOv2/CUDA-г ачаалдаггүй. Зөвхөн Docker Qdrant."""
-    client = make_qdrant_client(require_docker=True)
+    """Runs in its own process; it intentionally does not load DINOv2/CUDA."""
+    client = make_qdrant_client()
     try:
-        update_analytics_job(job_id, "RUNNING", "Qdrant-аас вектор уншиж байна…", backend="docker")
+        update_analytics_job(job_id, "RUNNING", "Reading vectors from Qdrant…")
         ids, vectors = scroll_all_vectors(client)
         if len(ids) < 3:
-            update_analytics_job(job_id, "FAILED", "Аналитикт хамгийн багадаа 3 индэслэсэн хүсэг шаардлагатай.", backend="docker", finished=True)
+            update_analytics_job(job_id, "FAILED", "At least three indexed frames are required for analytics.", True)
             return
 
-        update_analytics_job(job_id, "RUNNING", f"{len(ids):,} хүсэгт UMAP болон онцгой оноог тооцоолж байна…", backend="docker")
+        update_analytics_job(job_id, "RUNNING", f"Calculating UMAP and anomaly scores for {len(ids):,} frames…")
         umap_neighbors = min(15, len(ids) - 1)
         lof_neighbors = min(20, len(ids) - 1)
         reducer = umap.UMAP(n_neighbors=umap_neighbors, min_dist=0.1, metric="cosine", random_state=42)
@@ -511,7 +527,7 @@ def analytics_worker(job_id: str) -> None:
         score_range = scores.max() - scores.min()
         normalized = (scores - scores.min()) / score_range if score_range > 0 else np.zeros_like(scores)
 
-        update_analytics_job(job_id, "RUNNING", "Үр дүнг Qdrant-д хадгалж байна…", backend="docker")
+        update_analytics_job(job_id, "RUNNING", "Saving analytics results to Qdrant…")
         for start in range(0, len(ids), 500):
             points = [
                 models.PointStruct(
@@ -525,11 +541,12 @@ def analytics_worker(job_id: str) -> None:
                 )
                 for index in range(start, min(start + 500, len(ids)))
             ]
+            # `update_vectors=False` leaves the existing 768D vectors untouched.
             client.upsert(COLLECTION_NAME, points=points, wait=True, update_vectors=False)
-        update_analytics_job(job_id, "COMPLETE", f"{len(ids):,} хүсэг дээр аналитик дууссан. Газрын зургийг шинэчилнэ үү.", backend="docker", finished=True)
+        update_analytics_job(job_id, "COMPLETE", f"Analytics complete for {len(ids):,} frames. Refresh the map to inspect results.", True)
     except Exception as exc:
-        log.exception("Аналитик ажилч алдаа гаргалаа")
-        update_analytics_job(job_id, "FAILED", f"Аналитик амжилтгүй: {exc}", backend="docker", finished=True)
+        log.exception("Analytics worker failed")
+        update_analytics_job(job_id, "FAILED", f"Analytics failed: {exc}", True)
     finally:
         client.close()
 
@@ -540,26 +557,25 @@ def run_analytics() -> str:
         return "⚠️ Тооллыг түр зогсоосон байна. Олон хэрэглэгчтэй үед локал санг зэрэг ашиглахаас сэргийлж Docker Qdrant шаардлагатай."
     with analytics_process_lock:
         if analytics_process is not None and analytics_process.is_alive():
-            return "⏳ Аналитик ажиллаж байна. **Явцыг шалгах**-аас харна уу."
+            return "⏳ Analytics is already running. Use **Check status** for progress."
         job_id = str(uuid.uuid4())
         with db_lock, db_connection() as connection:
             connection.execute(
-                "INSERT INTO analytics_jobs (id, status, message, backend, started_at) VALUES (?, ?, ?, ?, ?)",
-                (job_id, "QUEUED", "Аналитик ажил эхлэхээ хүлээж байна…", "docker", utc_now()),
+                "INSERT INTO analytics_jobs (id, status, message, started_at) VALUES (?, ?, ?, ?)",
+                (job_id, "QUEUED", "Analytics job is waiting to start…", utc_now()),
             )
         analytics_process = mp.get_context("spawn").Process(target=analytics_worker, args=(job_id,), daemon=False)
         analytics_process.start()
-    return "🧭 Аналитик тусдаа ажил болж эхэллээ. Та хайлт болон галиг оруулах ажиллагааг үргэлжлүүлж болно."
+    return "🧭 Analytics started in a separate worker. You may continue searching and transcribing while it runs."
 
 
 def analytics_status() -> str:
     job = latest_analytics_job()
     if job is None:
-        return "*Аналитик ажил хараахан эхлээгүй байна.*"
-    status, message, backend = job
+        return "*No analytics job has been started yet.*"
+    status, message = job
     icon = {"QUEUED": "🕒", "RUNNING": "🧭", "COMPLETE": "✅", "FAILED": "❌"}.get(status, "ℹ️")
-    backend_label = "Docker Qdrant" if backend == "docker" else "локал сан"
-    return f"{icon} **{status.title()}** — {message}\n\n_Ашигласан сангийн төрөл: {backend_label}_"
+    return f"{icon} **{status.title()}** — {message}"
 
 
 def scroll_all_analytics_points() -> list[Any]:
@@ -570,7 +586,7 @@ def scroll_all_analytics_points() -> list[Any]:
             collection_name=COLLECTION_NAME,
             scroll_filter=models.Filter(must=[models.FieldCondition(key="umap_x", range=models.Range(gte=-999999.0))]),
             limit=5_000,
-            with_payload=["umap_x", "umap_y", "anomaly_score", "source"],
+            with_payload=True,
             with_vectors=False,
         )
         points.extend(records)
@@ -580,7 +596,7 @@ def scroll_all_analytics_points() -> list[Any]:
 
 def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
     empty = go.Figure().update_layout(
-        title="Эхлээд аналитик ажиллуулаад газрын зургийг шинэчилнэ үү.",
+        title="Run analytics first, then refresh this map.",
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
     )
@@ -597,7 +613,7 @@ def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
             x_values.append(payload["umap_x"])
             y_values.append(payload["umap_y"])
             scores.append(score)
-            hover.append(f"Эх сурвалж: {payload.get('source', 'Unknown')}<br>Онцгой оноо: {score:.3f}")
+            hover.append(f"Source: {payload.get('source', 'Unknown')}<br>Anomaly score: {score:.3f}")
             if score > 0.7:
                 anomalies.append(record)
         if not x_values:
@@ -605,67 +621,67 @@ def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
         figure = go.Figure()
         figure.add_trace(go.Scattergl(
             x=x_values, y=y_values, mode="markers",
-            marker=dict(size=[10 if score > 0.7 else 4 for score in scores], color=scores, colorscale="Viridis", showscale=True, opacity=0.85, colorbar=dict(title="Онцгой")),
-            text=hover, hoverinfo="text", name="Хүсгүүд",
+            marker=dict(size=[10 if score > 0.7 else 4 for score in scores], color=scores, colorscale="Viridis", showscale=True, opacity=0.85, colorbar=dict(title="Anomaly")),
+            text=hover, hoverinfo="text", name="Frames",
         ))
         figure.add_trace(go.Scattergl(
             x=[record.payload["umap_x"] for record in anomalies],
             y=[record.payload["umap_y"] for record in anomalies],
             mode="markers", marker=dict(size=12, color="red", symbol="circle-open", line=dict(width=2)),
-            hoverinfo="skip", name="Өндөр онцгой (>0.7)",
+            hoverinfo="skip", name="High anomaly (>0.7)",
         ))
-        figure.update_layout(template="plotly_dark", title="Чанарын хяналтын газрын зураг", height=500, margin=dict(l=20, r=20, t=45, b=20), paper_bgcolor="rgba(0,0,0,0)")
-        choices = [(f"Оноо {record.payload.get('anomaly_score', 0):.3f} · {record.payload.get('source', 'Unknown')}", str(record.id)) for record in anomalies]
+        figure.update_layout(template="plotly_dark", title="Quality-control map", height=500, margin=dict(l=20, r=20, t=45, b=20), paper_bgcolor="rgba(0,0,0,0)")
+        choices = [(f"Score {record.payload.get('anomaly_score', 0):.3f} · {record.payload.get('source', 'Unknown')}", str(record.id)) for record in anomalies]
         return figure, gr.update(choices=choices, value=choices[0][1] if choices else None)
     except Exception as exc:
-        log.exception("Газрын зураг бүтээж чадсангүй")
-        raise gr.Error(f"Газрын зургийг шинэчилж чадсангүй: {exc}") from exc
+        log.exception("Could not build plot")
+        raise gr.Error(f"Could not refresh the map: {exc}") from exc
 
 
 def inspect_node(node_id: str) -> tuple[str | None, str, go.Figure]:
     if not node_id:
-        return None, "Өндөр оноотой цэгийг сонгоно уу.", go.Figure()
+        return None, "Choose a high-anomaly point from the list.", go.Figure()
     try:
         records = qdrant.retrieve(COLLECTION_NAME, ids=[node_id], with_payload=True, with_vectors=True)
         if not records:
-            return None, "❌ Энэ цэг боломжгүй болсон байна.", go.Figure()
+            return None, "❌ This point is no longer available.", go.Figure()
         record = records[0]
         payload = record.payload or {}
         score = float(payload.get("anomaly_score", 0.0))
-        level = "🔴 Өндөр" if score > 0.7 else "🟡 Дунд" if score > 0.4 else "🟢 Бага"
+        level = "🔴 High" if score > 0.7 else "🟡 Medium" if score > 0.4 else "🟢 Low"
         metadata = (
-            f"### {level} онцгой\n\n"
-            f"| Талбар | Утга |\n| --- | --- |\n"
-            f"| Эх сурвалж | `{payload.get('source', 'Unknown')}` |\n"
-            f"| Оноо | `{score:.4f}` |\n"
-            f"| Координат | `({payload.get('umap_x', 0):.2f}, {payload.get('umap_y', 0):.2f})` |"
+            f"### {level} anomaly\n\n"
+            f"| Field | Value |\n| --- | --- |\n"
+            f"| Source | `{payload.get('source', 'Unknown')}` |\n"
+            f"| Score | `{score:.4f}` |\n"
+            f"| Coordinates | `({payload.get('umap_x', 0):.2f}, {payload.get('umap_y', 0):.2f})` |"
         )
         values = (record.vector or [])[:64]
         embedding_plot = go.Figure(go.Bar(y=values, marker=dict(color=values, colorscale="RdBu", cmid=0)))
-        embedding_plot.update_layout(title="Векторын товч (эхний 64)", template="plotly_dark", height=220, margin=dict(l=10, r=10, t=35, b=10), xaxis=dict(showticklabels=False), paper_bgcolor="rgba(0,0,0,0)")
+        embedding_plot.update_layout(title="Embedding preview (first 64 values)", template="plotly_dark", height=220, margin=dict(l=10, r=10, t=35, b=10), xaxis=dict(showticklabels=False), paper_bgcolor="rgba(0,0,0,0)")
         path = payload.get("local_path")
         return path if path and Path(path).exists() else None, metadata, embedding_plot
     except Exception as exc:
-        log.exception("Цэгийн үзлэг амжилтгүй")
-        return None, f"❌ Энэ цэгийг шалгаж чадсангүй: {exc}", go.Figure()
+        log.exception("Node inspection failed")
+        return None, f"❌ Could not inspect this point: {exc}", go.Figure()
 
 
 # =============================================================================
-# 5. ГАЛИГ — ЯГ ТЭНЦҮҮ ХАДГАЛАХ
+# 5. TRANSCRIPTION — EXACT TEXT PRESERVATION
 # =============================================================================
 def validate_exact_text(text: str) -> str:
-    """Зөвхөн баталгаажуулна. Текстийг огт өөрчилдөггүй."""
+    """Validate only. It deliberately does not strip or normalize the text."""
     if text is None or text == "":
-        raise ValueError("Хадгалахаасаа өмнө галиг оруулна уу.")
+        raise ValueError("Enter a transcription before saving.")
     try:
         text.encode("utf-8")
     except UnicodeEncodeError as exc:
-        raise ValueError("Энэ текст UTF-8-д илэрч чадахгүй байна.") from exc
+        raise ValueError("This text cannot be represented in UTF-8.") from exc
     return text
 
 
 def token_count_for_reporting(text: str) -> int:
-    # Зөвхөн мэдээллийн тоолол; text_content өөрчлөгдөхгүй.
+    # This count is metadata only; text_content itself is never transformed.
     return len(text.split())
 
 
@@ -688,17 +704,17 @@ def commit_transliteration(text: str, image_path: str | None) -> str:
                 "SELECT text_content FROM transliterations ORDER BY id DESC LIMIT 1"
             ).fetchone()[0]
         if saved != exact_text:
-            raise RuntimeError("Текст эргэн шалгагдсангүй; хадгалсан гэж үзэх аргагүй.")
+            raise RuntimeError("Text round-trip verification failed; no claim of preservation is made.")
         return (
-            "## ✅ Галиг хадгалсан\n"
-            f"- **Үг (мэдээллийн тоо):** {token_count_for_reporting(exact_text)}\n"
-            f"- **Тэмдэгт:** {len(exact_text)}\n"
-            f"- **Эх сурвалж:** {Path(source).name if source != 'Unknown source' else source}\n"
-            "- **Бүрэн бүтэн:** яг хэвээр SQLite-д хадгалсан"
+            "## ✅ Transcription saved\n"
+            f"- **Words (reporting count):** {token_count_for_reporting(exact_text)}\n"
+            f"- **Characters:** {len(exact_text)}\n"
+            f"- **Source:** {Path(source).name if source != 'Unknown source' else source}\n"
+            "- **Integrity:** exact SQLite round-trip verified"
         )
     except Exception as exc:
-        log.exception("Галиг хадгалж чадсангүй")
-        return f"❌ Галигийг хадгалж чадсангүй: {exc}"
+        log.exception("Could not save transliteration")
+        return f"❌ Could not save the transcription: {exc}"
 
 
 def get_recent_transliterations() -> list[tuple[Any, ...]]:
@@ -708,7 +724,7 @@ def get_recent_transliterations() -> list[tuple[Any, ...]]:
                 "SELECT timestamp, source_image, text_content, char_count FROM transliterations ORDER BY id DESC LIMIT 5"
             ).fetchall()
     except Exception as exc:
-        log.exception("Сүүлийн галиг уншиж чадсангүй")
+        log.exception("Could not fetch recent transliterations")
         return []
 
 
@@ -717,7 +733,7 @@ def append_suffix(text: str, suffix: str) -> str:
 
 
 # =============================================================================
-# 6. ХЭРЭГЛЭГЧИЙН ХАРИЛЦАХ БҮС
+# 6. USER-FRIENDLY GRADIO INTERFACE
 # =============================================================================
 CSS = """
 .gradio-container { max-width: 1240px !important; padding: 1.25rem !important; }
@@ -725,13 +741,14 @@ CSS = """
 .header h1 { color: white !important; margin: 0 !important; font-size: 1.7rem !important; }
 .header p { color: #f5e6d3 !important; margin: .35rem 0 0 !important; font-size: .98rem !important; }
 .header-logo img { border-radius: 10px; object-fit: cover; }
+.guide { border: 1px solid var(--border-color-primary); border-radius: 10px; padding: 1rem; background: var(--background-fill-secondary); }
 footer { display: none !important; }
 """
 
 
 def build_app() -> gr.Blocks:
     with gr.Blocks(
-        title="Монгол Шунхан Ганжуур",
+        title="Монгол Ганжуур",
         theme=gr.themes.Soft(primary_hue="amber", secondary_hue="slate"),
         css=CSS,
     ) as app:
@@ -747,28 +764,33 @@ def build_app() -> gr.Blocks:
                     elem_classes=["header-logo"],
                 )
             with gr.Column():
-                gr.Markdown("# Монгол Шунхан Ганжуур")
-                gr.Markdown("Эртний судрын дүрсийг хайж, онцгой хэлбэрийг олж, галигийг хадгалах сан.")
+                gr.Markdown("# Монгол Ганжуур")
+                gr.Markdown("Эртний судрын дүрсийг хайж, онцгой хэлбэрийг олж, галигийг найдвартай хадгалах сан.")
 
+        gr.Markdown(
+            "**Ашиглах дараалал:** эхлээд зургаа оруулна → дүрсээр хайна → онцгой хэсгийг шалгана → галигийг хадгална.",
+            elem_classes=["guide"],
+        )
         gr.HTML(
-            f'<div style="text-align:center; margin-bottom:1rem;">'
-            f'<a href="/file={MANUAL_PATH}" target="_blank" style="font-size:1rem; font-weight:600; text-decoration:none; color:#7a3e20;">'
-            f'📖 Дэлгэрэнгүй гарын авлага нээх</a></div>'
+            f"""<div class="guide" style="margin-top:-.45rem; text-align:center;">
+            <a href="/file={MANUAL_PATH}" target="_blank" style="font-size:1.05rem; font-weight:700; text-decoration:none;">
+            📖 Дэлгэрэнгүй гарын авлага нээх
+            </a></div>"""
         )
 
         with gr.Tabs():
             with gr.Tab("1 · Зураг оруулах"):
+                gr.Markdown("### Скан зураг оруулах\nJPG эсвэл PNG зургуудыг нэг ZIP файлд хийгээд оруулна уу. Алхам бага байх тусам илүү олон хэсэг үүсэх тул хугацаа, хадгалах зай илүү орно.")
                 with gr.Row():
                     with gr.Column():
                         zip_input = gr.File(label="Зургийн архив (.zip)", file_types=[".zip"])
-                        stride_input = gr.Slider(10, 300, value=DEFAULT_STRIDE, step=10,
-                                                 label="Хэсэглэх алхам (пиксел)",
-                                                 info="50 пикселээр эхлэхийг зөвлөж байна.")
+                        stride_input = gr.Slider(10, 300, value=DEFAULT_STRIDE, step=10, label="Хэсэглэх алхам (пиксел)", info="50 пикселээр эхлэхийг зөвлөж байна.")
                         ingest_button = gr.Button("Зургийг сан руу оруулах", variant="primary", size="lg")
                     with gr.Column():
-                        ingest_status = gr.Markdown()
+                        ingest_status = gr.Markdown("ZIP файлаа сонгоод **Зургийг сан руу оруулах** товчийг дарна уу.")
 
             with gr.Tab("2 · Дүрсээр хайх"):
+                gr.Markdown("### Ижил төстэй дүрс хайх\nСудрын үсэг, үг эсвэл онцгой тэмдэгтэй жижиг хэсгийг тасалж оруулна уу. Тасалсан хэсэг нь аль болох тод байх нь сайн үр дүн өгнө.")
                 with gr.Row():
                     with gr.Column(scale=1):
                         query_image = gr.Image(type="numpy", label="Хайх зургийн хэсэг", height=300)
@@ -778,6 +800,7 @@ def build_app() -> gr.Blocks:
                         search_gallery = gr.Gallery(label="Ижил төстэй олдворууд", columns=4, height=430, object_fit="contain")
 
             with gr.Tab("3 · Онцгой хэлбэр"):
+                gr.Markdown("### Ховор болон онцгой хэлбэрийг шалгах\nТоолол ажиллаж байх үед бусад хэсгийг үргэлжлүүлэн ашиглаж болно. Олон зурагтай бол дуусахад хэдэн минут шаардлагатай.")
                 with gr.Row():
                     with gr.Column(scale=1):
                         analytics_button = gr.Button("Онцгой хэлбэрийг тооцоолох", variant="secondary")
@@ -786,7 +809,7 @@ def build_app() -> gr.Blocks:
                         analytics_output = gr.Markdown(value=analytics_status())
                     with gr.Column(scale=3):
                         quality_plot = gr.Plot(label="Дүрсийн тархалтын зураг")
-                gr.Markdown("### Онцгой олдворыг үзэх")
+                gr.Markdown("### Онцгой олдворыг үзэх\nӨндөр оноотой хэсгийг сонгоод зургийг нь харж, шаардлагатай бол галиг оруулах хэсэг рүү илгээнэ үү.")
                 with gr.Row():
                     with gr.Column(scale=1):
                         node_dropdown = gr.Dropdown(label="Сонгох онцгой хэсэг", choices=[], interactive=True)
@@ -798,11 +821,12 @@ def build_app() -> gr.Blocks:
                         detail_embedding = gr.Plot(label="Дүрсийн товч харьцуулалт")
 
             with gr.Tab("4 · Галиг оруулах"):
+                gr.Markdown("### Галигийг хадгалах\nТаны оруулсан текстийг яг хэвээр нь хадгална. Зай, цэг тэмдэг, бичлэгийн хэлбэрийг өөрчлөхгүй.")
                 with gr.Row():
                     with gr.Column():
                         transcription_image = gr.Image(label="Эх зургийн хэсэг", type="filepath", interactive=True, height=360)
                     with gr.Column():
-                        transcription_text = gr.Textbox(label="Галиг текст", lines=11, placeholder="Кирилл галигийг оруулна уу.")
+                        transcription_text = gr.Textbox(label="Галиг текст", lines=11, placeholder="Монгол кирилл эсвэл монгол бичгийн галигийг яг хүссэн хэлбэрээрээ оруулна уу.")
                         with gr.Row():
                             suffix_bugd = gr.Button("бөгөөд", size="sm")
                             suffix_ajguu = gr.Button("ажгуу", size="sm")
@@ -810,6 +834,7 @@ def build_app() -> gr.Blocks:
                             suffix_ted = gr.Button("тэд", size="sm")
                         save_transcription = gr.Button("Галигийг хадгалах", variant="primary", size="lg")
                         save_status = gr.Markdown()
+                gr.Markdown("### Сүүлд хадгалсан таван галиг")
                 recent_table = gr.Dataframe(
                     headers=["Хадгалсан цаг", "Эх зураг", "Галиг текст", "Тэмдэгтийн тоо"],
                     value=get_recent_transliterations(),
@@ -837,7 +862,7 @@ def build_app() -> gr.Blocks:
 
 
 # =============================================================================
-# 7. ЭХЛҮҮЛЭХ
+# 7. LAUNCH
 # =============================================================================
 def verify_startup() -> None:
     global qdrant
@@ -845,35 +870,33 @@ def verify_startup() -> None:
         qdrant = make_qdrant_client()
         atexit.register(qdrant.close)
     if BATCH_SIZE < 1:
-        raise RuntimeError("GANJUUR_BATCH_SIZE хамгийн багадаа 1 байх ёстой.")
+        raise RuntimeError("GANJUUR_BATCH_SIZE must be at least 1.")
     init_db()
     try:
         qdrant.get_collections()
     except Exception as exc:
         raise RuntimeError(
-            f"Qdrant HTTP холболт амжилтгүй {QDRANT_HOST}:{QDRANT_PORT}. "
-            "Docker контейнер эхлүүлж 6333 порт нээгдсэн эсэхийг шалгана уу. "
-            "Өөрчлэлт хийгдсэнгүй. Анхны алдаа: " + str(exc)
+            f"Cannot reach Qdrant over HTTP at {QDRANT_HOST}:{QDRANT_PORT}. "
+            "Start the Qdrant Docker container and confirm that port 6333 is published. "
+            "The app did not change any data. Original error: " + str(exc)
         ) from exc
     ensure_collection(qdrant)
     info = qdrant.get_collection(COLLECTION_NAME)
-    log.info("Qdrant цуглуулга бэлэн: %s", COLLECTION_NAME)
-    log.info("Төхөөрөмж: %s | Векторууд: %s", DEVICE.upper(), info.points_count)
-
-
+    log.info("Qdrant collection is ready: %s", COLLECTION_NAME)
+    log.info("Device: %s | Vectors: %s", DEVICE.upper(), info.points_count)
 if __name__ == "__main__":
     mp.freeze_support()
     verify_startup()
     username = os.getenv("GANJUUR_USER")
     password = os.getenv("GANJUUR_PASS")
     if not username or not password:
-        raise RuntimeError("Монгол Шунхан Ганжуур эхлүүлэхийн өмнө GANJUUR_USER болон GANJUUR_PASS орчны хувьсагчиудыг тохируулна уу.")
+        raise RuntimeError("Set GANJUUR_USER and GANJUUR_PASS before launching Ganjuur AI.")
     build_app().launch(
         server_name=os.getenv("GANJUUR_HOST", "0.0.0.0"),
         server_port=int(os.getenv("GANJUUR_PORT", "7860")),
         show_error=True,
         auth=[(username, password)],
-        auth_message="Монгол Шунхан Ганжуур — нэвтрэх",
+        auth_message="Монгол Ганжуур — нэвтрэх",
         favicon_path=str(FAVICON_PATH) if FAVICON_PATH.exists() else None,
         allowed_paths=[str(MANUAL_PATH)],
     )
