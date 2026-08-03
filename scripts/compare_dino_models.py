@@ -115,16 +115,24 @@ def load_image(path: Path) -> Image.Image | None:
 
 
 def embed_batch(model, processor, images: list[Image.Image], device: str) -> np.ndarray:
-    """Return a (N, D) float32 matrix of L2-normalised embeddings."""
+    """Return a (N, D) float32 matrix of L2-normalised embeddings.
+
+    Handles three output formats:
+      - ViT (DINOv2, DINOv3-ViT): last_hidden_state is (B, seq, D) → CLS token
+      - ConvNeXt / ConvNeXt v2: last_hidden_state is (B, C, H, W) → global pool
+    """
     inputs = processor(images=images, return_tensors="pt").to(device)
     with torch.inference_mode():
         outputs = model(**inputs)
-    # CLS token is the first token for ViT models (DINOv2, DINOv3-ViT).
-    # ConvNeXt uses global average pooling — last_hidden_state is already (N,D).
-    if outputs.last_hidden_state.ndim == 3:
-        vecs = outputs.last_hidden_state[:, 0, :]
+    hs = outputs.last_hidden_state
+    if hs.ndim == 4:
+        # (B, C, H, W) → global average pool → (B, C)
+        vecs = hs.mean(dim=[-2, -1])
+    elif hs.ndim == 3:
+        # (B, seq, D) → CLS token
+        vecs = hs[:, 0, :]
     else:
-        vecs = outputs.last_hidden_state
+        vecs = hs
     vecs = vecs.cpu().numpy().astype(np.float32)
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-9
     return vecs
@@ -255,6 +263,9 @@ def main() -> int:
         "facebook/dinov2-base":  "DINOv2-base",
         "facebook/dinov2-large": "DINOv2-large",
         "facebook/dinov2-giant": "DINOv2-giant",
+        "facebook/convnextv2-base-22k-224":  "ConvNeXt-v2-base",
+        "facebook/convnextv2-large-22k-224": "ConvNeXt-v2-large",
+        "facebook/convnextv2-huge-22k-224":  "ConvNeXt-v2-huge",
         "facebook/dinov3-vitb16-pretrain-lvd1689m":  "DINOv3-ViT-base",
         "facebook/dinov3-vitl16-pretrain-lvd1689m":  "DINOv3-ViT-large",
         "facebook/dinov3-vith16plus-pretrain-lvd1689m": "DINOv3-ViT-huge",
@@ -275,7 +286,9 @@ def main() -> int:
         model     = AutoModel.from_pretrained(hub_id).to(device).eval()
         with torch.inference_mode():
             dummy = model(torch.randn(1, 3, 224, 224).to(device)).last_hidden_state
-        if dummy.ndim == 3:
+        if dummy.ndim == 4:
+            dummy = dummy.mean(dim=[-2, -1])
+        elif dummy.ndim == 3:
             dummy = dummy[:, 0, :]
         detected_dim = dummy.shape[1]
         print(f"  loaded in {time.time() - t0:.1f}s  dim={detected_dim}")
