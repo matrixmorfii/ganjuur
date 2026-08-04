@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монгол шунхан Ганжуур — Бүх судар</title>
+<style>
+  :root{
+    --brown:#a9713a; --brown-d:#8a5a2b; --ink:#20242c; --bg:#f4f1ea;
+    --card:#ffffff; --line:#e3ddd2; --red:#a03c28;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  /* ── Толгой хэсэг ── */
+  .topbar{display:flex;align-items:center;justify-content:space-between;background:#fff;
+    padding:10px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);position:sticky;top:0;z-index:20}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:44px;height:44px;border-radius:8px;background:#fff;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:26px}
+  .brand h1{margin:0;font-size:1.5rem}
+  .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;margin-left:6px;
+    padding:8px 10px;font-size:16px;cursor:pointer}
+  .tools button.active{background:var(--brown);border-color:var(--brown-d);color:#fff}
+  /* ── Ерөнхий байрлал ── */
+  .layout{display:flex;gap:0;min-height:calc(100vh - 65px)}
+  main{flex:1;padding:18px 26px;max-width:1000px;margin:0 auto}
+  aside{width:350px;background:#f1f0ee;border-left:1px solid var(--line);padding:16px;
+    position:sticky;top:65px;height:calc(100vh - 65px);overflow:auto}
+  /* ── Талхын мөр ── */
+  .crumbs{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .crumbs .vol{font-weight:700}
+  .crumbs .sep{color:#999}
+  .crumbs .title{font-weight:800;font-size:1.05rem}
+  /* ── Хуудасны карт ── */
+  .pagecard{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:22px;margin-bottom:16px}
+  .scanwrap{display:flex;justify-content:center;padding:8px;background:#fbfaf7;border:1px solid #eee}
+  .scanwrap img{max-width:100%;border:5px solid #b8543a;outline:1px solid #b8543a;outline-offset:5px;background:#f3e7d3}
+  .scan-placeholder{width:100%;min-height:240px;border:5px solid #b8543a;outline:1px solid #b8543a;outline-offset:5px;
+    background:#f3e7d3 repeating-linear-gradient(90deg,transparent 0 38px,rgba(160,60,40,.28) 38px 39px);
+    color:#8a2d1c;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .caption{color:#555;margin:12px 2px 4px}
+  .note{font-weight:800;text-align:center;margin:18px 0 8px}
+  textarea.tr{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;
+    font-size:1rem;line-height:1.55;resize:vertical;background:#fffdf8}
+  textarea.tr:focus{outline:2px solid var(--brown)}
+  .saved{color:#2e7d32;font-size:.85rem;visibility:hidden}
+  /* ── Навигаци ── */
+  .navrow{display:flex;justify-content:center;gap:12px;margin:10px 0 22px}
+  .navrow button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 16px;cursor:pointer}
+  /* ── Хөтөч ── */
+  aside h2{margin:0 0 12px;font-size:1.15rem}
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tabs button{flex:1;border:1px solid var(--brown);background:#fff;color:var(--ink);
+    padding:7px 0;border-radius:4px;font-weight:700;cursor:pointer}
+  .tabs button.active{background:var(--brown);color:#fff}
+  .tree .root{font-weight:800;margin:6px 0 8px}
+  .node{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-weight:600}
+  .node:hover{background:#e8e4dc}
+  .node.sel{background:#e9d9c4;box-shadow:inset 0 -2px 0 var(--brown)}
+  .node .ic{font-size:15px}
+  .indent{margin-left:22px;border-left:1px dashed #cfc8ba;padding-left:8px}
+  /* ── Хайлт ── */
+  #searchPanel{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:flex;justify-content:center;padding-top:8vh}
+  #searchBox{width:min(720px,92vw);background:#fff;border-radius:10px;padding:16px;max-height:76vh;overflow:auto}
+  #searchBox input{width:100%;padding:10px 12px;font-size:1rem;border:1px solid var(--brown);border-radius:8px}
+  .sres{padding:10px;border-bottom:1px solid var(--line);cursor:pointer}
+  .sres:hover{background:#f6f1e8}
+  .sres .p{font-size:.8rem;color:#888}
+  @media (max-width:900px){.layout{flex-direction:column}aside{width:100%;height:auto;position:static}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">🪷</span><h1>Монгол шунхан Ганжуур</h1></div>
+  <div class="tools">
+    <button id="btnPage"  class="active" title="Хуудас горим">📄</button>
+    <button id="btnScroll" title="Бүтэн судар — гүйлгэж унших">📜</button>
+    <button id="btnSearch" title="Хайх">🔍</button>
+    <button id="btnLoad"  title="sudur_data.json ачаалах">📂</button>
+    <button id="btnExport" title="Галиг экспортлох (JSON)">💾</button>
+  </div>
+</header>
+
+<div class="layout">
+  <main id="main"></main>
+  <aside>
+    <h2>Хөтөч</h2>
+    <div class="tabs">
+      <button data-tab="aimag">Аймаг</button>
+      <button data-tab="volume">Боть</button>
+      <button data-tab="chapter" class="active">Бөлөг</button>
+      <button data-tab="section">Хэсэг</button>
+    </div>
+    <div class="tree" id="tree"></div>
+  </aside>
+</div>
+
+<div id="searchPanel" hidden>
+  <div id="searchBox">
+    <input id="searchInput" placeholder="Гарчиг эсвэл галиг текстээр хайх…  (Esc — хаах)">
+    <div id="searchResults"></div>
+  </div>
+</div>
+<input type="file" id="jsonFile" accept=".json" hidden>
+
+<script>
+/* ═══════════ Жишээ өгөгдөл (bодит өгөгдлийг sudur_data.json-оор авна) ═══════════ */
+const DEMO = { aimags:[ { id:"a1", title:"Билгийн аймаг", volumes:[ { id:"v26", number:26,
+  title:"Хутагт билгийн чанад хязгаарт хүрсэн 100 мянгат",
+  chapters:[
+    { id:"c1", title:"Тэргүүн бөлөг. Оршил", sections:[
+      { id:"c1s1", title:"Хэсэг 1", pages:[
+        { id:"p1", text:"Ийн хэмээн миний сонссон нэгэн цагт…" },
+        { id:"p2", text:"" } ] } ] },
+    { id:"c2", title:"Дэд бөлөг",        sections:[ { id:"c2s1", title:"Хэсэг 1", pages:[ { id:"p3", text:"" } ] } ] },
+    { id:"c3", title:"Гутгаар бөлөг",    sections:[ { id:"c3s1", title:"Хэсэг 1", pages:[ { id:"p4", text:"" } ] } ] },
+    { id:"c4", title:"Дөтгөөр бөлөг",    sections:[ { id:"c4s1", title:"Хэсэг 1", pages:[ { id:"p5", text:"" } ] } ] },
+    { id:"c5", title:"Тавдугаар бөлөг",  sections:[ { id:"c5s1", title:"Хэсэг 1", pages:[ { id:"p6", text:"" } ] } ] },
+    { id:"c6", title:"Зургадугаар бөлөг",sections:[ { id:"c6s1", title:"Хэсэг 1", pages:[ { id:"p7", text:"" } ] } ] },
+    { id:"c7", title:"Долдугаар бөлөг",  sections:[ { id:"c7s1", title:"Хэсэг 1", pages:[ { id:"p8", text:"" } ] } ] },
+    { id:"c8", title:"Наймдугаар бөлөг", sections:[ { id:"c8s1", title:"Хэсэг 1", pages:[ { id:"p9", text:"" } ] } ] }
+  ] } ] } ] };
+
+/* ═══════════ Төлөв ═══════════ */
+let DATA = DEMO;
+const S = { aimag:0, volume:0, chapter:0, section:0, page:0, mode:"page", tab:"chapter", scope:"chapter" };
+const $ = id => document.getElementById(id);
+const curA = () => DATA.aimags[S.aimag];
+const curV = () => curA()?.volumes[S.volume];
+const curC = () => curV()?.chapters[S.chapter];
+const chPages = ch => ch.sections.flatMap(s => s.pages);
+
+/* ═══════════ Хадгалалт (localStorage) ═══════════ */
+const getKey = pid => "gtr_" + pid;
+const savedText = p => localStorage.getItem(getKey(p.id)) ?? p.text ?? "";
+function bindTextareas(root){
+  root.querySelectorAll("textarea.tr").forEach(t => {
+    t.addEventListener("input", () => {
+      localStorage.setItem(getKey(t.dataset.page), t.value);
+      const tag = t.parentElement.querySelector(".saved");
+      if (tag){ tag.style.visibility = "visible"; setTimeout(()=>tag.style.visibility="hidden", 900); }
+    });
+  });
+}
+
+/* ═══════════ Зураг / хуудасны блок ═══════════ */
+function scanHTML(p, i){
+  return p.image
+    ? `<img src="${p.image}" loading="lazy" alt="Хуудас ${i+1}">`
+    : `<div class="scan-placeholder">Хуудас ${i+1}</div>`;
+}
+function pageBlock(p, i){
+  return `<div class="pagecard">
+    <div class="scanwrap">${scanHTML(p,i)}</div>
+    <div class="caption">Хуудас ${i+1} · ${curV()?.title ?? ""}</div>
+    <div class="note">Энд кириллаар шууд бичиж болдог байхаар <span class="saved">✔ хадгалсан</span></div>
+    <textarea class="tr" data-page="${p.id}" placeholder="Кирилл галиг…">${savedText(p).replace(/</g,"&lt;")}</textarea>
+  </div>`;
+}
+
+/* ═══════════ Үндсэн муж ═══════════ */
+function renderMain(){
+  const v = curV(), ch = curC();
+  if (!v || !ch){ $("main").innerHTML = "<p>Өгөгдөл алга. 📂 товчоор sudur_data.json ачаална уу.</p>"; return; }
+  const crumbs = `<div class="crumbs"><span class="vol">Боть # ${v.number}</span>
+    <span class="sep">›</span><span class="title">${v.title}</span>
+    <span class="sep">›</span><span>${ch.title}</span></div>`;
+
+  if (S.mode === "page"){
+    const pages = chPages(ch);
+    S.page = Math.min(S.page, pages.length - 1);
+    $("main").innerHTML = crumbs + pageBlock(pages[S.page], S.page) +
+      `<div class="navrow">
+         <button id="prev" ${S.page===0?"disabled":""}>◀ Өмнөх</button>
+         <span style="align-self:center">${S.page+1} / ${pages.length}</span>
+         <button id="next" ${S.page>=pages.length-1?"disabled":""}>Дараах ▶</button>
+       </div>`;
+    $("prev")?.addEventListener("click", ()=>{ S.page--; renderMain(); });
+    $("next")?.addEventListener("click", ()=>{ S.page++; renderMain(); });
+  } else {
+    /* 📜 Бүтэн судар: сонгосон хүрээний бүх хуудсыг дараалуулна */
+    const scopeChs = S.scope==="chapter" ? [ch]
+                   : S.scope==="volume"  ? v.chapters
+                   : curA().volumes.flatMap(x=>x.chapters);
+    let html = crumbs + `<div class="navrow">Хүрээ:
+      <select id="scope">
+        <option value="chapter" ${S.scope==="chapter"?"selected":""}>Энэ бөлөг</option>
+        <option value="volume"  ${S.scope==="volume"?"selected":""}>Боть бүтэн</option>
+        <option value="all"     ${S.scope==="all"?"selected":""}>Аймаг бүтэн (бүх судар)</option>
+      </select></div>`;
+    let n = 0;
+    for (const c of scopeChs){
+      html += `<h3 style="margin:26px 4px 10px;color:var(--brown-d)">📜 ${c.title}</h3>`;
+      for (const p of chPages(c)) html += pageBlock(p, n++);
+    }
+    $("main").innerHTML = html;
+    $("scope")?.addEventListener("change", e => { S.scope = e.target.value; renderMain(); });
+  }
+  bindTextareas($("main"));
+  window.scrollTo(0,0);
+}
+
+/* ═══════════ Хөтөч мод ═══════════ */
+function renderTree(){
+  document.querySelectorAll(".tabs button").forEach(b =>
+    b.classList.toggle("active", b.dataset.tab === S.tab));
+  let html = "";
+  const node = (ic,label,sel,fn) => `<div class="node ${sel?"sel":""}" data-fn="${fn}"><span class="ic">${ic}</span>${label}</div>`;
+  if (S.tab === "aimag"){
+    DATA.aimags.forEach((a,i)=> html += node("📁", a.title, i===S.aimag, "a"+i));
+  } else if (S.tab === "volume"){
+    html += `<div class="root">📁 ${curA()?.title ?? ""}</div>`;
+    curA()?.volumes.forEach((v,i)=> html += node("📁", `Боть # ${v.number} · ${v.title}`, i===S.volume, "v"+i));
+  } else if (S.tab === "chapter"){
+    html += `<div class="root">📁 ${curV()?.title ?? ""}</div><div class="indent">`;
+    curV()?.chapters.forEach((c,i)=> html += node(i===S.chapter?"📂":"📁", c.title, i===S.chapter, "c"+i));
+    html += `</div>`;
+  } else {
+    html += `<div class="root">📂 ${curC()?.title ?? ""}</div><div class="indent">`;
+    curC()?.sections.forEach((s,i)=> html += node("📄", s.title, i===S.section, "s"+i));
+    html += `</div>`;
+  }
+  $("tree").innerHTML = html;
+  $("tree").querySelectorAll(".node").forEach(el => el.addEventListener("click", () => {
+    const k = el.dataset.fn, n = +k.slice(1);
+    if (k[0]==="a"){ S.aimag=n; S.volume=S.chapter=S.section=S.page=0; S.tab="volume"; }
+    if (k[0]==="v"){ S.volume=n; S.chapter=S.section=S.page=0; S.tab="chapter"; }
+    if (k[0]==="c"){ S.chapter=n; S.section=S.page=0; }
+    if (k[0]==="s"){ S.section=n; S.page=0; }
+    renderTree(); renderMain();
+  }));
+}
+document.querySelectorAll(".tabs button").forEach(b =>
+  b.addEventListener("click", ()=>{ S.tab = b.dataset.tab; renderTree(); }));
+
+/* ═══════════ Горим, хайлт, экспорт ═══════════ */
+$("btnPage").onclick = () => { S.mode="page"; $("btnPage").classList.add("active"); $("btnScroll").classList.remove("active"); renderMain(); };
+$("btnScroll").onclick = () => { S.mode="scroll"; $("btnScroll").classList.add("active"); $("btnPage").classList.remove("active"); renderMain(); };
+
+$("btnSearch").onclick = () => { $("searchPanel").hidden = false; $("searchInput").focus(); };
+$("searchPanel").addEventListener("click", e => { if (e.target.id==="searchPanel") $("searchPanel").hidden = true; });
+$("searchInput").addEventListener("keydown", e => { if (e.key==="Escape") $("searchPanel").hidden = true; });
+$("searchInput").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q){ $("searchResults").innerHTML = ""; return; }
+  let out = "", count = 0;
+  DATA.aimags.forEach((a,ai)=>a.volumes.forEach((v,vi)=>v.chapters.forEach((c,ci)=>{
+    if (count>50) return;
+    const pages = chPages(c);
+    pages.forEach((p,pi)=>{
+      const txt = savedText(p);
+      if (c.title.toLowerCase().includes(q) || txt.toLowerCase().includes(q)){
+        const snip = txt ? (txt.match(new RegExp(".{0,60}"+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+".{0,60}","i"))?.[0] ?? txt.slice(0,120)) : c.title;
+        out += `<div class="sres" data-nav="${ai},${vi},${ci},${pi}">
+          <div class="p">Боть ${v.number} › ${c.title} › хуудас ${pi+1}</div>${snip}</div>`;
+        count++;
+      }
+    });
+  })));
+  $("searchResults").innerHTML = out || "<p style='padding:10px'>Олдсонгүй.</p>";
+  $("searchResults").querySelectorAll(".sres").forEach(el => el.addEventListener("click", ()=>{
+    const [ai,vi,ci,pi] = el.dataset.nav.split(",").map(Number);
+    Object.assign(S,{aimag:ai,volume:vi,chapter:ci,page:pi,mode:"page"});
+    $("searchPanel").hidden = true; renderTree(); renderMain();
+  }));
+});
+
+$("btnExport").onclick = () => {
+  const out = {};
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if (k.startsWith("gtr_")) out[k.slice(4)] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ganjuur_galiig_" + new Date().toISOString().slice(0,10) + ".json";
+  a.click();
+};
+
+$("btnLoad").onclick = () => $("jsonFile").click();
+$("jsonFile").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { DATA = JSON.parse(r.result);
+    Object.assign(S,{aimag:0,volume:0,chapter:0,section:0,page:0});
+    renderTree(); renderMain();
+  } catch(err){ alert("JSON алдаатай: "+err); } };
+  r.readAsText(f);
+};
+
+/* Товчлуураар хуудас сэлгэх (текст бичиж үед биш) */
+document.addEventListener("keydown", e => {
+  if (e.target.tagName==="TEXTAREA" || e.target.tagName==="INPUT" || S.mode!=="page") return;
+  if (e.key==="ArrowRight") $("next")?.click();
+  if (e.key==="ArrowLeft")  $("prev")?.click();
+});
+
+/* HTTP орчинд өгөгдөл байвал автоматаар ачаална */
+fetch("sudur_data.json").then(r=>{ if(!r.ok) throw 0; return r.json(); })
+  .then(j=>{ DATA=j; renderTree(); renderMain(); }).catch(()=>{});
+
+renderTree(); renderMain();
+</script>
+</body>
+</html>
