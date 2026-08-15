@@ -22,19 +22,26 @@ The widest point of this gap is where the *СУДРЫН ХЭЛ* project works.
 Ganjuur is a visual-similarity search engine over the woodblock manuscript.
 A researcher uploads a cropped glyph or page and the system returns
 visually and structurally similar forms across all 108 volumes, using
-**DINOv2-base 768-dimensional cosine vectors** computed on an NVIDIA RTX 3060.
+**ConvNeXt-v2-base 1024-dimensional cosine vectors** computed on an NVIDIA
+RTX 3060.
 
 Alongside search the app records human-entered **transliterations
 byte-for-byte** — no normalization, no tokenization, no silent correction —
 so the reading of each form is preserved exactly as entered.
 
-### Current production state (live at `192.168.0.55`)
+### Current production state (live at `https://ganjuur.mn`)
 
 - All **108 volumes** ingested from BDRC (83,466 content pages).
 - Qdrant running in Docker (`qdrant_ganjuur`), HTTP on `127.0.0.1:6333`.
-- Gradio app served at `:7860`, managed by `systemd ganjuur.service`
-  (runs `longcat.py` as the production entrypoint).
-- Three collections: `ganjuur_frames`, `ganjuur_genealogy`, `ganjuur_words`.
+- Gradio app served at `:7860` behind nginx (`https://ganjuur.mn`,
+  login-protected), managed by `systemd ganjuur.service` (runs `longcat.py`
+  as the production entrypoint).
+- Public manuscript viewer at `https://ganjuur.mn/view/` (static `:8000`,
+  no login): `ganjuur_sudur_kharagch.html` + `titles.html`.
+- Галиг (transliteration) API in `translit_api.py` on `127.0.0.1:7861`
+  (nginx `/api/`): public read + token-protected write + FTS5 search.
+- Primary collection: `ganjuur_frames_v2` — **2,329,105 points**, 1024-dim
+  COSINE. Legacy: `ganjuur_genealogy`, `ganjuur_words`.
 - Every vector point carries BDRC attribution in its payload
   (`bdrc_url`, `bdrc_resource_id`, `bdrc_volume`, `bdrc_access`).
 
@@ -46,11 +53,14 @@ so the reading of each form is preserved exactly as entered.
 .
 ├── README.md                  # this file — start here
 ├── .gitignore                 # excludes debug artifacts, .env, scan dumps
+├── ganjuur_sudur_kharagch.html  # ★ live manuscript viewer (ganjuur.mn/view/)
+├── titles.html                # ★ live volume-titles page (ganjuur.mn/view/)
 │
 ├── src/                       # production Python source
 │   ├── longcat.py             # ★ PRODUCTION — the running entrypoint (systemd)
-│   ├── gpt.py                 # alternative app build (research/experimental)
-│   ├── app.py                 # alternative app build (research/experimental)
+│   ├── translit_api.py        # галиг FastAPI service (:7861), started by longcat.py
+│   ├── gpt.py                 # legacy app build (not used at runtime)
+│   ├── app.py                 # legacy app build (not used at runtime)
 │   ├── ingest_from_bdrc.py    # BDRC IIIF batch ingester (108 volumes → Qdrant)
 │   ├── appvmeta.py            # app variant / metadata tooling
 │   ├── snapshot_v5.py         # production snapshot builder (COW hardlink clones)
@@ -71,6 +81,7 @@ so the reading of each form is preserved exactly as entered.
 │   ├── update_service.sh      # patch systemd unit and reload
 │   ├── upload_and_restart.sh  # upload code, restart service
 │   ├── migrate.sh             # data-migration helper
+│   ├── cleanup_disk.py        # safe disk cleanup (dry-run default, vectordb-protected)
 │   ├── preflight_check.ps1    # pre-deploy validation (Windows side)
 │   ├── deploy_snap.ps1        # deploy snapshot script to server
 │   ├── do_deploy.ps1          # orchestrate a full deploy
@@ -133,6 +144,12 @@ The short version:
    storage or export.
 5. **Never** replace the `systemd` service with a screen-only deployment.
 6. **Never** commit `.env`, secrets, API keys, or passwords.
+7. **Never** break the two public pages at `ganjuur.mn/view/`
+   (`ganjuur_sudur_kharagch.html`, `titles.html`) — test any change at a
+   `_v2` URL first, swap only after verification.
+8. Analytics payload updates must use `set_payload` (merge semantics). Never
+   `upsert` on existing points — it replaces the whole payload and would wipe
+   `source`/`local_path`.
 
 ---
 

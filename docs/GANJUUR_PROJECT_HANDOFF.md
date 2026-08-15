@@ -10,6 +10,25 @@ The non-negotiable product goal is:
 
 Treat this document as a production handoff. Inspect the live files and service status before changing anything. Do not replace working architecture with an unverified rewrite.
 
+## ⚠️ Authoritative current state (updated 2026-08-15)
+
+Large parts of this document were written for an earlier deployment. Where a
+detail below conflicts with this section, **this section is correct**:
+
+- **Runtime entrypoint:** `/home/trinity/ganjuur/longcat.py` — systemd `ganjuur.service` runs this file. `gpt.py` and `app.py` are legacy and are NOT the running app.
+- **Public URL:** `https://ganjuur.mn` — nginx routes `/` → Gradio `:7860` (login-protected), `/view/` → public static viewer `:8000`, `/api/` → галиг API `:7861`.
+- **Embedding model:** `facebook/convnextv2-base-22k-224` (ConvNeXt-v2), **1024-dimensional** COSINE vectors, on the NVIDIA RTX 3060. (Not DINOv2 / 768-dim.)
+- **Primary collection:** `ganjuur_frames_v2` — **2,329,105 points**, 1024-dim. The old `ganjuur_frames` (60,900 pts, 768-dim) is superseded. Legacy `ganjuur_genealogy` / `ganjuur_words` remain untouched.
+- **Галиг (transliteration) API:** `translit_api.py`, started from `longcat.py` (`start_api_thread`), FastAPI on `127.0.0.1:7861`. Public reads: `GET /api/translit/all`, `GET /api/translit/search` (FTS5). Token-protected write: `POST /api/translit/save` (`X-Translit-Token` = env `GANJUUR_TRANS_TOKEN`). Storage stays byte-exact.
+- **Analytics:** reservoir sampling (default 100,000 points, seed 42) + UMAP + PyNNDescent kNN anomaly scoring (LocalOutlierFactor is no longer used; UMAP has no `random_state`). Scores/coordinates are written back per point with `set_payload` — never `upsert`, which would replace the whole payload and wipe `source`/`local_path`.
+- **UI:** logo is `logo.jpg` (not `image_566068.jpg`). Header shows a 4-step flow strip; tabs are labeled `1 · 📥 Зураг оруулах` … `4 · ✍️ Галиг оруулах`. Terminology is “хэсэг” (not “хүсэг”).
+- **Manual:** `ganjuur_gariin_avlaga.html` on the server, rewritten for non-technical readers, logo embedded as base64; served at `/file=/home/trinity/ganjuur/ganjuur_gariin_avlaga.html` behind the app login.
+- **Public viewer pages** at `ganjuur.mn/view/`: `ganjuur_sudur_kharagch.html` (server-saved галиг + FTS search) and `titles.html` (volume titles). Never break them; test at a `_v2` URL first.
+- **Secrets:** everything lives in `/home/trinity/ganjuur/.env` (`GANJUUR_USER`, `GANJUUR_PASS`, `GANJUUR_TRANS_TOKEN`, `GANJUUR_SUDO_PASS`, Qdrant ports). Never hardcode them in source or scripts; never display or commit them.
+
+The protection rules, transliteration-integrity rules, and Qdrant/SQLite
+safety rules below remain fully in force.
+
 ## Current verified production state
 
 As of the latest verified deployment:
@@ -36,7 +55,8 @@ The `ganjuur_frames` collection has 768-dimensional COSINE vectors and payload i
 
 - Server OS: Xubuntu / Ubuntu family
 - Application directory: `/home/trinity/ganjuur`
-- Main application: `/home/trinity/ganjuur/gpt.py`
+- Main application: `/home/trinity/ganjuur/longcat.py` (⚠️ not `gpt.py` — see the 2026-08-15 state update above)
+- Галиг API module: `/home/trinity/ganjuur/translit_api.py` (started by `longcat.py`)
 - Virtual environment: `/home/trinity/ganjuur/ganjuur_env`
 - Transcription database: `/home/trinity/ganjuur/transliterations.db`
 - Scan data: `/home/trinity/ganjuur/data/`

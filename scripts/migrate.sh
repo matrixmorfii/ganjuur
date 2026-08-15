@@ -12,7 +12,8 @@ SRC="/home/trinity/ganjuur"
 DST="/home/trinity/data/prod_ready_ganjuur"
 TS="$(date +%Y%m%d_%H%M%S)"
 LOG="/tmp/migrate_${TS}.log"
-PASS='pass#1234'   # local sudo — never logged
+PASS="${GANJUUR_SUDO_PASS:-}"   # set GANJUUR_SUDO_PASS in .env — never hardcode
+if [ -z "$PASS" ]; then echo "ERROR: GANJUUR_SUDO_PASS not set (see .env)" >&2; exit 1; fi
 
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 run() { echo "  -> $*" >> "$LOG"; "$@" >>"$LOG" 2>&1; }

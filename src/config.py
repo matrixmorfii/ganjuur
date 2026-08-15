@@ -44,8 +44,8 @@ PROD_READY_BASE         = Path(os.getenv("GANJUUR_PROD_READY_BASE", "/home/trini
 PROD_READY_SNAPSHOT1    = PROD_READY_BASE / "snapshot1"
 
 # Sudo password for brief docker stop during snapshot builds.
-# Prefer the env var; the inline default preserves backward compatibility.
-SUDO_PASS = os.getenv("GANJUUR_SUDO_PASS", "pass#1234")
+# Set GANJUUR_SUDO_PASS in .env — no inline default (secret must never live in source).
+SUDO_PASS = os.getenv("GANJUUR_SUDO_PASS", "")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

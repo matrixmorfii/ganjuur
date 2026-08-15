@@ -1,11 +1,9 @@
-# Монгол Шунхан Ганжуур — нэг файлын програм
+# Монгол Ганжуур — нэг файлын програм
 #
 # Хүснэгтэд ашиглагдах орчны хувьсагчууд:
 #   GANJUUR_BASE_DIR=/home/trinity/ganjuur
 #   QDRANT_HOST=localhost  QDRANT_PORT=6333  QDRANT_GRPC_PORT=6334
 #   GANJUUR_USER=<хэрэглэгч>  GANJUUR_PASS=<нууц үг>
-
-import grad_patch
 
 import atexit
 import logging
@@ -29,13 +27,44 @@ import plotly.graph_objects as go
 import torch
 import umap
 from qdrant_client import QdrantClient, models
-from sklearn.neighbors import LocalOutlierFactor
 from transformers import AutoImageProcessor, AutoModel
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", message=r"IMPORTANT: You are using gradio version.*", category=UserWarning, module=r"gradio\.analytics")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("ganjuur")
+
+# =============================================================================
+# 0. ЧУХАЛ НЭМЭЛТҮҮД — БҮХ ИМПОРТЫН ӨМНӨ БАЙХ ЁСТОЙ
+# =============================================================================
+import gradio_client.utils
+import gradio.networking
+
+_orig_json_schema_to_python_type = gradio_client.utils._json_schema_to_python_type
+
+
+def _patched_json_schema_to_python_type(schema, defs=None):
+    """Gradio-н Pydantic-v2 boolean JSON schema-д зориулсан нийцтэй байдлын засвар."""
+    if isinstance(schema, bool):
+        return "any"
+    return _orig_json_schema_to_python_type(schema, defs)
+
+
+_orig_get_type = gradio_client.utils.get_type
+
+
+def _patched_get_type(schema):
+    """_patched_json_schema_to_python_type-т хамт ашиглагдах засвар."""
+    if isinstance(schema, bool):
+        return "bool"
+    return _orig_get_type(schema)
+
+
+gradio_client.utils._json_schema_to_python_type = _patched_json_schema_to_python_type
+gradio_client.utils.get_type = _patched_get_type
+
+# LAN/Nginx суулгалтанд зориулсан шаардлагатай.
+gradio.networking.url_ok = lambda url: True
 
 # =============================================================================
 # 1. ИМПОРТ, ТОХИРГОО БА ХАДГАЛАХ ТӨВ
@@ -64,8 +93,8 @@ SCANS_DIR = BASE_DIR / "data" / "scans"
 CROPS_DIR = BASE_DIR / "data" / "ganjuur_crops" / "db_frames"
 DB_PATH = BASE_DIR / "transliterations.db"
 
-COLLECTION_NAME = "ganjuur_frames"
-VECTOR_DIM = 768
+COLLECTION_NAME = "ganjuur_frames_v2"
+VECTOR_DIM = 1024
 BATCH_SIZE = int(os.getenv("GANJUUR_BATCH_SIZE", "32"))
 DEFAULT_STRIDE = 50
 
@@ -78,7 +107,7 @@ MAX_IMAGE_PIXELS = int(os.getenv("GANJUUR_MAX_IMAGE_PIXELS", "100000000"))
 MAX_TOTAL_PIXELS = int(os.getenv("GANJUUR_MAX_TOTAL_PIXELS", "300000000"))
 SUPPORTED_EXTENSIONS = (".jpg", ".jpeg", ".png")
 
-LOGO_PATH = Path(os.getenv("GANJUUR_LOGO_PATH", str(BASE_DIR / "image_566068.jpg")))
+LOGO_PATH = Path(os.getenv("GANJUUR_LOGO_PATH", str(BASE_DIR / "logo.jpg")))
 FAVICON_PATH = Path(os.getenv("GANJUUR_FAVICON_PATH", str(BASE_DIR / "asset" / "favicon.png")))
 MANUAL_PATH = BASE_DIR / "ganjuur_gariin_avlaga.html"
 
@@ -242,8 +271,8 @@ def get_model_and_processor() -> tuple[AutoModel, AutoImageProcessor]:
     with model_lock:
         if _model is None or _processor is None:
             log.info("DINOv2-base ачааллаж байна: %s", DEVICE.upper())
-            _processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
-            _model = AutoModel.from_pretrained("facebook/dinov2-base").to(DEVICE)
+            _processor = AutoImageProcessor.from_pretrained("facebook/convnextv2-base-22k-224")
+            _model = AutoModel.from_pretrained("facebook/convnextv2-base-22k-224").to(DEVICE)
             _model.eval()
     return _model, _processor
 
@@ -257,9 +286,11 @@ def get_embeddings_batch(img_bgr_list: list[np.ndarray]) -> list[list[float]]:
         inputs = processor(images=rgb_images, return_tensors="pt").to(DEVICE)
         if DEVICE == "cuda":
             with torch.autocast("cuda", dtype=torch.float16):
-                output = model(**inputs).last_hidden_state[:, 0, :]
+                _out = model(**inputs).last_hidden_state
+                output = _out.mean(dim=[-2, -1]) if _out.ndim == 4 else _out[:, 0, :]
         else:
-            output = model(**inputs).last_hidden_state[:, 0, :]
+            _out = model(**inputs).last_hidden_state
+            output = _out.mean(dim=[-2, -1]) if _out.ndim == 4 else _out[:, 0, :]
         output = torch.nn.functional.normalize(output, p=2, dim=-1)
     return output.cpu().numpy().tolist()
 
@@ -296,7 +327,7 @@ def remove_paths(paths: Iterable[str]) -> None:
             if crops_root in candidate.parents:
                 candidate.unlink(missing_ok=True)
         except OSError:
-            log.warning("Дутуу хүсгийг устгаж чадсангүй: %s", path)
+            log.warning("Дутуу хэсгийг устгаж чадсангүй: %s", path)
 
 
 def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_id: str, extra_payload: dict | None = None) -> int:
@@ -314,7 +345,7 @@ def flush_batch(crops: list[np.ndarray], paths: list[str], ids: list[str], page_
                     "source": page_id,
                     "local_path": path,
                     "status": "PENDING",
-                    "embedding_model": "facebook/dinov2-base",
+                    "embedding_model": "facebook/convnextv2-base-22k-224",
                     "preprocessing": "green-channel-clahe-v1",
                     "ingested_at": utc_now(),
                     **(extra_payload or {}),
@@ -427,8 +458,8 @@ def handle_zip_ingestion(zip_file_obj: Any, stride: int, progress=gr.Progress())
         message = [
             "## ✅ Оруулаж дууссан",
             f"- **Уншиж авсан хуудас:** {len(members):,}",
-            f"- **Үүсгэсэн хүсэг:** {total_frames:,}",
-            f"- **Индэслэсэн хүсэг:** {indexed_frames:,}",
+            f"- **Үүсгэсэн хэсэг:** {total_frames:,}",
+            f"- **Индэслэсэн хэсэг:** {indexed_frames:,}",
             f"- **Алхам:** {stride}px",
         ]
         if skipped:
@@ -469,9 +500,21 @@ def execute_visual_query(image_rgb: np.ndarray, top_k: int) -> list[tuple[str, s
 # =============================================================================
 # 4. АНАЛИТИК — ТУСДАА ПРОЦЕСС, ХАДГАЛСАН АЖЛЫН БАЙДАЛ
 # =============================================================================
-def scroll_all_vectors(client: QdrantClient) -> tuple[list[Any], np.ndarray]:
+ANALYTICS_SAMPLE_SIZE = int(os.getenv("GANJUUR_ANALYTICS_SAMPLE", "100000"))
+
+
+def scroll_sample_vectors(
+    client: QdrantClient, sample_size: int, progress_cb: Any = None
+) -> tuple[list[Any], np.ndarray, int]:
+    """Reservoir sampling: Qdrant-аас векторыг урсгаж, RAM-д хязгаартай түүвэр авна.
+
+    Бүх коллекцийг санах ойд хуулахын оронд (2.3 сая × 1024 float ≈ 90 GB)
+    тогтмол хэмжээтэй reservoir-т жигд санамсаргүй түүвэр хадгална.
+    """
+    rng = np.random.default_rng(42)
     ids: list[Any] = []
-    vectors: list[list[float]] = []
+    reservoir: np.ndarray | None = None
+    seen = 0
     offset = None
     while True:
         records, offset = client.scroll(
@@ -483,50 +526,81 @@ def scroll_all_vectors(client: QdrantClient) -> tuple[list[Any], np.ndarray]:
         )
         if not records:
             break
-        ids.extend(record.id for record in records)
-        vectors.extend(record.vector for record in records)
+        for record in records:
+            if reservoir is None:
+                reservoir = np.empty((sample_size, VECTOR_DIM), dtype=np.float32)
+            seen += 1
+            if len(ids) < sample_size:
+                reservoir[len(ids)] = record.vector
+                ids.append(record.id)
+            else:
+                slot = int(rng.integers(0, seen))
+                if slot < sample_size:
+                    reservoir[slot] = record.vector
+                    ids[slot] = record.id
+        if progress_cb is not None:
+            progress_cb(seen)
         if offset is None:
             break
-    return ids, np.asarray(vectors, dtype=np.float32)
+    if reservoir is None:
+        return [], np.empty((0, VECTOR_DIM), dtype=np.float32), seen
+    return ids, reservoir[: len(ids)], seen
 
 
 def analytics_worker(job_id: str) -> None:
     """Тусдаа ажиллана; DINOv2/CUDA-г ачаалдаггүй. Зөвхөн Docker Qdrant."""
     client = make_qdrant_client(require_docker=True)
     try:
-        update_analytics_job(job_id, "RUNNING", "Qdrant-аас вектор уншиж байна…", backend="docker")
-        ids, vectors = scroll_all_vectors(client)
+        sample_size = max(100, min(ANALYTICS_SAMPLE_SIZE, 500_000))
+        update_analytics_job(job_id, "RUNNING", "Qdrant-аас вектор уншиж, түүвэр бүрдүүлж байна…", backend="docker")
+
+        def report_progress(seen: int) -> None:
+            if seen % 100_000 == 0:
+                update_analytics_job(job_id, "RUNNING", f"Qdrant-аас вектор уншиж байна… {seen:,} хэсэг", backend="docker")
+
+        ids, vectors, total_points = scroll_sample_vectors(client, sample_size, progress_cb=report_progress)
         if len(ids) < 3:
-            update_analytics_job(job_id, "FAILED", "Аналитикт хамгийн багадаа 3 индэслэсэн хүсэг шаардлагатай.", backend="docker", finished=True)
+            update_analytics_job(job_id, "FAILED", "Аналитикт хамгийн багадаа 3 индэслэсэн хэсэг шаардлагатай.", backend="docker", finished=True)
             return
 
-        update_analytics_job(job_id, "RUNNING", f"{len(ids):,} хүсэгт UMAP болон онцгой оноог тооцоолж байна…", backend="docker")
+        update_analytics_job(job_id, "RUNNING", f"{total_points:,} хэсгээс {len(ids):,}-г түүвэрлэв. UMAP тооцоолж байна…", backend="docker")
         umap_neighbors = min(15, len(ids) - 1)
-        lof_neighbors = min(20, len(ids) - 1)
-        reducer = umap.UMAP(n_neighbors=umap_neighbors, min_dist=0.1, metric="cosine", random_state=42)
+        # random_state өгвөл UMAP 1 core-д ордог тул зэрэгцээ тооцоололд үлдээнэ
+        reducer = umap.UMAP(n_neighbors=umap_neighbors, min_dist=0.1, metric="cosine")
         coordinates = reducer.fit_transform(vectors)
-        lof = LocalOutlierFactor(n_neighbors=lof_neighbors, metric="cosine")
-        lof.fit_predict(vectors)
-        scores = -lof.negative_outlier_factor_
+
+        update_analytics_job(job_id, "RUNNING", "Онцгой байдлын оноо тооцоолж байна…", backend="docker")
+        # O(N²) brute-force LOF-ийн оронд ойролцоо kNN (UMAP-ын өөрийн хамаарал)
+        from pynndescent import NNDescent
+
+        knn_neighbors = min(20, len(ids) - 1)
+        index = NNDescent(vectors, metric="cosine", n_neighbors=knn_neighbors + 1)
+        _, distances = index.neighbor_graph
+        scores = distances.mean(axis=1)
         score_range = scores.max() - scores.min()
         normalized = (scores - scores.min()) / score_range if score_range > 0 else np.zeros_like(scores)
 
         update_analytics_job(job_id, "RUNNING", "Үр дүнг Qdrant-д хадгалж байна…", backend="docker")
-        for start in range(0, len(ids), 500):
-            points = [
-                models.PointStruct(
-                    id=ids[index],
-                    vector=None,
-                    payload={
-                        "umap_x": float(coordinates[index][0]),
-                        "umap_y": float(coordinates[index][1]),
-                        "anomaly_score": float(normalized[index]),
-                    },
-                )
-                for index in range(start, min(start + 500, len(ids)))
-            ]
-            client.upsert(COLLECTION_NAME, points=points, wait=True, update_vectors=False)
-        update_analytics_job(job_id, "COMPLETE", f"{len(ids):,} хүсэг дээр аналитик дууссан. Газрын зургийг шинэчилнэ үү.", backend="docker", finished=True)
+        # set_payload нь бусад түлхүүрүүдийг (source, local_path г.м.) хэвээр үлдээнэ;
+        # upsert-ээр бол payload бүхлээрээ солигдох эрсдэлтэй.
+        total = len(ids)
+        for index, point_id in enumerate(ids):
+            payload = {
+                "umap_x": float(coordinates[index][0]),
+                "umap_y": float(coordinates[index][1]),
+                "anomaly_score": float(normalized[index]),
+            }
+            for attempt in range(3):
+                try:
+                    client.set_payload(COLLECTION_NAME, payload=payload, points=[point_id], wait=True)
+                    break
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    time.sleep(1.0)
+            if (index + 1) % 10_000 == 0:
+                update_analytics_job(job_id, "RUNNING", f"Үр дүнг Qdrant-д хадгалж байна… {index + 1:,}/{total:,}", backend="docker")
+        update_analytics_job(job_id, "COMPLETE", f"{len(ids):,} түүвэрлэсэн хэсэг дээр аналитик дууссан (нийт {total_points:,}). Газрын зургийг шинэчилнэ үү.", backend="docker", finished=True)
     except Exception as exc:
         log.exception("Аналитик ажилч алдаа гаргалаа")
         update_analytics_job(job_id, "FAILED", f"Аналитик амжилтгүй: {exc}", backend="docker", finished=True)
@@ -606,7 +680,7 @@ def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
         figure.add_trace(go.Scattergl(
             x=x_values, y=y_values, mode="markers",
             marker=dict(size=[10 if score > 0.7 else 4 for score in scores], color=scores, colorscale="Viridis", showscale=True, opacity=0.85, colorbar=dict(title="Онцгой")),
-            text=hover, hoverinfo="text", name="Хүсгүүд",
+            text=hover, hoverinfo="text", name="Хэсгүүд",
         ))
         figure.add_trace(go.Scattergl(
             x=[record.payload["umap_x"] for record in anomalies],
@@ -721,17 +795,20 @@ def append_suffix(text: str, suffix: str) -> str:
 # =============================================================================
 CSS = """
 .gradio-container { max-width: 1240px !important; padding: 1.25rem !important; }
-.header { background: linear-gradient(135deg, #25324d, #5f3f2f); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; align-items: center !important; }
+.header { background: linear-gradient(135deg, #25324d, #5f3f2f); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: .75rem; align-items: center !important; }
 .header h1 { color: white !important; margin: 0 !important; font-size: 1.7rem !important; }
 .header p { color: #f5e6d3 !important; margin: .35rem 0 0 !important; font-size: .98rem !important; }
-.header-logo img { border-radius: 10px; object-fit: cover; }
+.header-logo img { border-radius: 10px; object-fit: cover; background: #fff; padding: 3px; }
+.flow-strip { display: flex; justify-content: center; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; padding: .55rem 1rem; background: #f7f1e8; border: 1px solid #e4d5bf; border-radius: 10px; font-size: .9rem; color: #5a4632; }
+.flow-step b { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; background: #7a3e20; color: #fff; border-radius: 50%; margin-right: .35rem; font-size: .78rem; }
+.flow-arrow { color: #b09878; font-weight: 600; }
 footer { display: none !important; }
 """
 
 
 def build_app() -> gr.Blocks:
     with gr.Blocks(
-        title="Монгол Шунхан Ганжуур",
+        title="Монгол Ганжуур",
         theme=gr.themes.Soft(primary_hue="amber", secondary_hue="slate"),
         css=CSS,
     ) as app:
@@ -747,8 +824,17 @@ def build_app() -> gr.Blocks:
                     elem_classes=["header-logo"],
                 )
             with gr.Column():
-                gr.Markdown("# Монгол Шунхан Ганжуур")
+                gr.Markdown("# Монгол Ганжуур")
                 gr.Markdown("Эртний судрын дүрсийг хайж, онцгой хэлбэрийг олж, галигийг хадгалах сан.")
+
+        gr.HTML(
+            '<div class="flow-strip">'
+            '<span class="flow-step"><b>1</b>Зураг оруулах</span><span class="flow-arrow">→</span>'
+            '<span class="flow-step"><b>2</b>Дүрсээр хайх</span><span class="flow-arrow">→</span>'
+            '<span class="flow-step"><b>3</b>Онцгой хэлбэр</span><span class="flow-arrow">→</span>'
+            '<span class="flow-step"><b>4</b>Галиг оруулах</span>'
+            '</div>'
+        )
 
         gr.HTML(
             f'<div style="text-align:center; margin-bottom:1rem;">'
@@ -757,7 +843,8 @@ def build_app() -> gr.Blocks:
         )
 
         with gr.Tabs():
-            with gr.Tab("1 · Зураг оруулах"):
+            with gr.Tab("1 · 📥 Зураг оруулах"):
+                gr.Markdown("Шинэ боть/судрын зургуудыг **.zip** архиваар оруулж индексжүүлнэ. Дууссны дараа **2 · 🔍 Дүрсээр хайх** ашиглах боломжтой.")
                 with gr.Row():
                     with gr.Column():
                         zip_input = gr.File(label="Зургийн архив (.zip)", file_types=[".zip"])
@@ -768,7 +855,8 @@ def build_app() -> gr.Blocks:
                     with gr.Column():
                         ingest_status = gr.Markdown()
 
-            with gr.Tab("2 · Дүрсээр хайх"):
+            with gr.Tab("2 · 🔍 Дүрсээр хайх"):
+                gr.Markdown("Зургаас хайх хэсгээ оруулаад (paste эсвэл файл) **Ижил дүрс хайх** дарна уу — ижил төстэй хуудас хэсгүүд баруун талд гарна.")
                 with gr.Row():
                     with gr.Column(scale=1):
                         query_image = gr.Image(type="numpy", label="Хайх зургийн хэсэг", height=300)
@@ -777,7 +865,8 @@ def build_app() -> gr.Blocks:
                     with gr.Column(scale=3):
                         search_gallery = gr.Gallery(label="Ижил төстэй олдворууд", columns=4, height=430, object_fit="contain")
 
-            with gr.Tab("3 · Онцгой хэлбэр"):
+            with gr.Tab("3 · ✨ Онцгой хэлбэр"):
+                gr.Markdown("**Дараалал:** ① Тооцоолох (~100 мянган түүвэр, 20-30 мин) → ② Явцыг шалгах → ③ Дуусмагц **Газрын зургийг шинэчлэх**. Зураг дээрх тод цэгүүд = онцгой хэлбэрүүд.")
                 with gr.Row():
                     with gr.Column(scale=1):
                         analytics_button = gr.Button("Онцгой хэлбэрийг тооцоолох", variant="secondary")
@@ -797,12 +886,14 @@ def build_app() -> gr.Blocks:
                     with gr.Column(scale=2):
                         detail_embedding = gr.Plot(label="Дүрсийн товч харьцуулалт")
 
-            with gr.Tab("4 · Галиг оруулах"):
+            with gr.Tab("4 · ✍️ Галиг оруулах"):
+                gr.Markdown("Эх зургийн хэсгийг оруулаад (3-р табаас **Илгээх** товчоор ирж болно), кирилл галигийг бичээд **Хадгалах** дарна уу. Текст серверт бүрэн хадгалагдана.")
                 with gr.Row():
                     with gr.Column():
                         transcription_image = gr.Image(label="Эх зургийн хэсэг", type="filepath", interactive=True, height=360)
                     with gr.Column():
                         transcription_text = gr.Textbox(label="Галиг текст", lines=11, placeholder="Кирилл галигийг оруулна уу.")
+                        gr.Markdown("**Түгээмэл үг нэмэх** (товч дарвал текстийн төгсгөлд нэмнэ):")
                         with gr.Row():
                             suffix_bugd = gr.Button("бөгөөд", size="sm")
                             suffix_ajguu = gr.Button("ажгуу", size="sm")
@@ -864,16 +955,19 @@ def verify_startup() -> None:
 if __name__ == "__main__":
     mp.freeze_support()
     verify_startup()
+    from translit_api import start_api_thread  # ГАЛИГ API — public уншилт + token-той бичилт
+
+    start_api_thread(db_connection, db_lock)
     username = os.getenv("GANJUUR_USER")
     password = os.getenv("GANJUUR_PASS")
     if not username or not password:
-        raise RuntimeError("Монгол Шунхан Ганжуур эхлүүлэхийн өмнө GANJUUR_USER болон GANJUUR_PASS орчны хувьсагчиудыг тохируулна уу.")
+        raise RuntimeError("Монгол Ганжуур эхлүүлэхийн өмнө GANJUUR_USER болон GANJUUR_PASS орчны хувьсагчиудыг тохируулна уу.")
     build_app().launch(
         server_name=os.getenv("GANJUUR_HOST", "0.0.0.0"),
         server_port=int(os.getenv("GANJUUR_PORT", "7860")),
         show_error=True,
         auth=[(username, password)],
-        auth_message="Монгол Шунхан Ганжуур — нэвтрэх",
+        auth_message="Монгол Ганжуур — нэвтрэх",
         favicon_path=str(FAVICON_PATH) if FAVICON_PATH.exists() else None,
         allowed_paths=[str(MANUAL_PATH)],
     )

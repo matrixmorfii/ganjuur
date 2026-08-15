@@ -3,91 +3,267 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Монгол шунхан Ганжуур — Бүх судар</title>
+<title>Монгол Ганжуур — Бүх судар</title>
 <style>
-  :root{
-    --brown:#a9713a; --brown-d:#8a5a2b; --ink:#20242c; --bg:#f4f1ea;
-    --card:#ffffff; --line:#e3ddd2; --red:#a03c28;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-  /* ── Толгой хэсэг ── */
-  .topbar{display:flex;align-items:center;justify-content:space-between;background:#fff;
-    padding:10px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);position:sticky;top:0;z-index:20}
-  .brand{display:flex;align-items:center;gap:12px}
-  .logo{width:44px;height:44px;border-radius:8px;background:#fff;border:1px solid var(--line);
-    display:flex;align-items:center;justify-content:center;font-size:26px}
-  .brand h1{margin:0;font-size:1.5rem}
-  .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;margin-left:6px;
-    padding:8px 10px;font-size:16px;cursor:pointer}
-  .tools button.active{background:var(--brown);border-color:var(--brown-d);color:#fff}
-  /* ── Ерөнхий байрлал ── */
-  .layout{display:flex;gap:0;min-height:calc(100vh - 65px)}
-  main{flex:1;padding:18px 26px;max-width:1000px;margin:0 auto}
-  aside{width:350px;background:#f1f0ee;border-left:1px solid var(--line);padding:16px;
-    position:sticky;top:65px;height:calc(100vh - 65px);overflow:auto}
-  /* ── Талхын мөр ── */
-  .crumbs{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-  .crumbs .vol{font-weight:700}
-  .crumbs .sep{color:#999}
-  .crumbs .title{font-weight:800;font-size:1.05rem}
-  /* ── Хуудасны карт ── */
-  .pagecard{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:22px;margin-bottom:16px}
-  .scanwrap{display:flex;justify-content:center;padding:8px;background:#fbfaf7;border:1px solid #eee}
-  .scanwrap img{max-width:100%;border:5px solid #b8543a;outline:1px solid #b8543a;outline-offset:5px;background:#f3e7d3}
-  .scan-placeholder{width:100%;min-height:240px;border:5px solid #b8543a;outline:1px solid #b8543a;outline-offset:5px;
-    background:#f3e7d3 repeating-linear-gradient(90deg,transparent 0 38px,rgba(160,60,40,.28) 38px 39px);
-    color:#8a2d1c;font-weight:800;display:flex;align-items:center;justify-content:center}
-  .caption{color:#555;margin:12px 2px 4px}
-  .note{font-weight:800;text-align:center;margin:18px 0 8px}
-  textarea.tr{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;
-    font-size:1rem;line-height:1.55;resize:vertical;background:#fffdf8}
-  textarea.tr:focus{outline:2px solid var(--brown)}
-  .saved{color:#2e7d32;font-size:.85rem;visibility:hidden}
-  /* ── Навигаци ── */
-  .navrow{display:flex;justify-content:center;gap:12px;margin:10px 0 22px}
-  .navrow button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 16px;cursor:pointer}
-  /* ── Хөтөч ── */
-  aside h2{margin:0 0 12px;font-size:1.15rem}
-  .tabs{display:flex;gap:6px;margin-bottom:14px}
-  .tabs button{flex:1;border:1px solid var(--brown);background:#fff;color:var(--ink);
-    padding:7px 0;border-radius:4px;font-weight:700;cursor:pointer}
-  .tabs button.active{background:var(--brown);color:#fff}
-  .tree .root{font-weight:800;margin:6px 0 8px}
-  .node{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-weight:600}
-  .node:hover{background:#e8e4dc}
-  .node.sel{background:#e9d9c4;box-shadow:inset 0 -2px 0 var(--brown)}
-  .node .ic{font-size:15px}
-  .indent{margin-left:22px;border-left:1px dashed #cfc8ba;padding-left:8px}
-  /* ── Хайлт ── */
-  #searchPanel{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:flex;justify-content:center;padding-top:8vh}
+/* ═══════════ Adarshah-inspired: dark academic with gold accents ═══════════ */
+:root{
+  --bg:#1a0f05;        --bg2:#2a1a0a;         --bg3:#3a2510;
+  --gold:#c8a267;      --gold-l:#e0c890;      --gold-d:#a07840;
+  --paper:#f5f0e8;     --paper-d:#e8e0d0;     --ink:#f0e8d8;
+  --ink2:#c8b898;      --red:#c85028;         --green:#6a9040;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--ink);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+}
+
+/* ── Top bar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg2);border-bottom:1px solid var(--bg3);
+  padding:0 16px;height:52px;flex-shrink:0;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .logo{
+  width:36px;height:36px;border-radius:6px;
+  object-fit:cover;
+}
+.brand h1{font-size:1.1rem;font-weight:600;color:var(--gold-l);letter-spacing:.02em}
+.brand .sub{font-size:.75rem;color:var(--ink2);font-weight:400}
+
+.tools{display:flex;align-items:center;gap:4px}
+.tools button{
+  background:transparent;border:1px solid transparent;color:var(--ink2);
+  width:36px;height:36px;border-radius:6px;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.tools button:hover{background:var(--bg3);color:var(--gold-l);border-color:var(--bg3)}
+.tools button.active{background:var(--bg3);color:var(--gold)}
+.tools .sep{width:1px;height:24px;background:var(--bg3);margin:0 4px}
+
+/* ── Main layout ── */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:280px;background:var(--bg2);border-right:1px solid var(--bg3);
+  display:flex;flex-direction:column;flex-shrink:0;transition:width .25s;
+  overflow:hidden;
+}
+.sidebar.collapsed{width:0;border-right:none}
+.sidebar-header{
+  padding:12px 16px;border-bottom:1px solid var(--bg3);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.sidebar-header h2{font-size:.85rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.08em}
+.sidebar-toggle{
+  background:var(--bg3);border:none;color:var(--gold);width:28px;height:28px;
+  border-radius:4px;cursor:pointer;font-size:14px;
+}
+.sidebar-toggle:hover{background:var(--gold-d)}
+
+.tree{flex:1;overflow-y:auto;padding:8px 0}
+.tree::-webkit-scrollbar{width:6px}
+.tree::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+
+.tree .root{font-weight:700;font-size:.9rem;color:var(--gold);padding:6px 16px;margin:2px 0}
+.tree .node{
+  display:flex;align-items:center;gap:8px;padding:6px 16px 6px 20px;
+  cursor:pointer;font-size:.85rem;color:var(--ink2);border-left:3px solid transparent;
+  transition:all .12s;
+}
+.tree .node:hover{background:var(--bg3);color:var(--ink)}
+.tree .node.sel{border-left-color:var(--gold);background:var(--bg3);color:var(--gold-l)}
+.tree .node .ic{font-size:13px;width:16px;text-align:center;flex-shrink:0}
+.tree .indent{margin-left:0;border-left:1px solid var(--bg3);margin-right:16px}
+
+.tabs{display:flex;gap:0;padding:0 8px 8px;border-bottom:1px solid var(--bg3);flex-shrink:0}
+.tabs button{
+  flex:1;background:transparent;border:none;border-bottom:2px solid transparent;
+  color:var(--ink2);padding:7px 0;font-size:.75rem;font-weight:600;
+  cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button.active{border-bottom-color:var(--gold);color:var(--gold)}
+
+/* ── Content area ── */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* Nav bar inside content */
+.navbar{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--bg3);
+  flex-shrink:0;
+}
+.navbar button{
+  background:var(--bg3);border:1px solid transparent;color:var(--ink);
+  padding:6px 14px;border-radius:6px;font-size:.85rem;cursor:pointer;
+  transition:all .15s;min-width:36px;
+}
+.navbar button:hover:not(:disabled){background:var(--gold-d);color:var(--bg)}
+.navbar button:disabled{opacity:.35;cursor:default}
+.navbar .pageinfo{font-size:.85rem;color:var(--ink2);min-width:80px;text-align:center}
+.navbar .pageinfo strong{color:var(--gold-l)}
+
+/* Image viewport */
+.viewport{
+  flex:1;overflow:auto;display:flex;flex-direction:column;
+  align-items:center;padding:24px;gap:16px;
+  background:var(--bg);
+}
+.viewport::-webkit-scrollbar{width:8px;height:8px}
+.viewport::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+
+/* Image card — parchment style */
+.imgcard{
+  background:var(--paper);border-radius:4px;padding:12px;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+  max-width:100%;position:relative;
+}
+.imgcard img{
+  display:block;max-width:100%;max-height:70vh;
+  border:1px solid var(--paper-d);cursor:zoom-in;
+}
+.imgcard .imglabel{
+  text-align:center;padding:8px 0 2px;font-size:.8rem;
+  color:#7a6a50;font-weight:600;
+}
+
+/* Crop grid */
+.cropgrid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:6px;padding:8px;background:#e8e0d0;border-radius:2px;
+}
+.cropgrid img{
+  width:100%;height:auto;border:1px solid #c8b898;border-radius:2px;
+  cursor:zoom-in;transition:transform .12s;
+}
+.cropgrid img:hover{transform:scale(1.04);z-index:2;position:relative}
+
+/* Toggle */
+.toggle-row{
+  display:flex;align-items:center;gap:16px;padding:4px 0;
+  font-size:.8rem;color:var(--ink2);
+}
+.toggle-row label{cursor:pointer;display:flex;align-items:center;gap:5px}
+.toggle-row input{accent-color:var(--gold)}
+
+/* Text area */
+.textcard{
+  background:var(--paper);border-radius:4px;padding:16px 20px;
+  max-width:800px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+.textcard .label{
+  font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:#9a8a70;margin-bottom:8px;
+}
+.textcard textarea{
+  width:100%;min-height:100px;border:1px solid var(--paper-d);
+  border-radius:4px;padding:10px 12px;font-size:.95rem;line-height:1.6;
+  resize:vertical;background:#fffdf8;color:#3a2a1a;font-family:inherit;
+}
+.textcard textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+.textcard .saved{color:var(--green);font-size:.75rem;visibility:hidden;margin-left:8px}
+
+/* Zoom modal */
+#zoomModal{
+  position:fixed;inset:0;background:rgba(10,5,0,.92);z-index:50;
+  display:flex;align-items:center;justify-content:center;cursor:zoom-out;
+}
+#zoomModal img{max-width:95vw;max-height:95vh;border:2px solid var(--gold)}
+
+/* Loading overlay */
+#loading{
+  position:fixed;inset:0;background:rgba(26,15,5,.96);z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;transition:opacity .4s;
+}
+#loading.hide{opacity:0;pointer-events:none}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--bg3);
+  border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading .msg{font-size:.95rem;color:var(--gold);font-weight:500;text-align:center;max-width:80%}
+#loading .err{color:var(--red);font-weight:600}
+
+/* Search */
+#searchPanel{
+  position:fixed;inset:0;background:rgba(10,5,0,.7);z-index:40;
+  display:flex;justify-content:center;padding-top:8vh;
+}
 #searchPanel[hidden]{display:none!important}
-  #searchBox{width:min(720px,92vw);background:#fff;border-radius:10px;padding:16px;max-height:76vh;overflow:auto}
-  #searchBox input{width:100%;padding:10px 12px;font-size:1rem;border:1px solid var(--brown);border-radius:8px}
-  .sres{padding:10px;border-bottom:1px solid var(--line);cursor:pointer}
-  .sres:hover{background:#f6f1e8}
-  .sres .p{font-size:.8rem;color:#888}
-  @media (max-width:900px){.layout{flex-direction:column}aside{width:100%;height:auto;position:static}}
+#searchBox{
+  width:min(640px,92vw);background:var(--bg2);border:1px solid var(--bg3);
+  border-radius:8px;padding:16px;max-height:70vh;overflow:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#searchBox input{
+  width:100%;padding:10px 14px;font-size:1rem;
+  border:1px solid var(--bg3);border-radius:6px;background:var(--bg);
+  color:var(--ink);
+}
+#searchBox input:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+.sres{padding:10px 12px;border-bottom:1px solid var(--bg3);cursor:pointer;font-size:.9rem}
+.sres:hover{background:var(--bg3)}
+.sres .p{font-size:.75rem;color:var(--ink2)}
+
+/* Scroll mode */
+.scrollview{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;
+  align-items:center;padding:24px;gap:24px;
+}
+.scrollview .imgcard{max-width:900px}
+
+/* File input */
+input[type=file]{display:none}
+
+/* Responsive */
+@media(max-width:800px){
+  .sidebar{position:absolute;left:0;top:52px;bottom:0;z-index:15;box-shadow:4px 0 16px rgba(0,0,0,.4)}
+  .sidebar.collapsed{width:0}
+}
 </style>
 </head>
 <body>
 
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="msg" id="loadMsg">sudur_data.json ачаалж байна…</div>
+</div>
+
+<!-- Top bar -->
 <header class="topbar">
-  <div class="brand"><span class="logo">🪷</span><h1>Монгол шунхан Ганжуур</h1></div>
+  <div class="brand">
+    <img class="logo" src="logo.jpg" alt="Ганжуур">
+    <div>
+      <h1>Монгол Ганжуур</h1>
+      <div class="sub">Бүх судар</div>
+    </div>
+  </div>
   <div class="tools">
-    <button id="btnPage"  class="active" title="Хуудас горим">📄</button>
+    <button id="btnPage" class="active" title="Хуудас горим">📄</button>
     <button id="btnScroll" title="Бүтэн судар — гүйлгэж унших">📜</button>
+    <div class="sep"></div>
     <button id="btnSearch" title="Хайх">🔍</button>
-    <button id="btnLoad"  title="sudur_data.json ачаалах">📂</button>
+    <button id="btnLoad" title="sudur_data.json ачаалах">📂</button>
     <button id="btnExport" title="Галиг экспортлох (JSON)">💾</button>
+    <a href="/titles.html" style="text-decoration:none"><button title="Ганжуурын гарчиг">📑</button></a>
   </div>
 </header>
 
 <div class="layout">
-  <main id="main"></main>
-  <aside>
-    <h2>Хөтөч</h2>
-    <div class="tabs">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Хөтөч</h2>
+      <button class="sidebar-toggle" id="btnCollapse" title="Хаах">✕</button>
+    </div>
+    <div class="tabs" id="tabs">
       <button data-tab="aimag">Аймаг</button>
       <button data-tab="volume">Боть</button>
       <button data-tab="chapter" class="active">Бөлөг</button>
@@ -95,214 +271,447 @@
     </div>
     <div class="tree" id="tree"></div>
   </aside>
+
+  <!-- Main content -->
+  <main class="content" id="content">
+    <div class="navbar" id="navbar"></div>
+    <div class="viewport" id="viewport"></div>
+  </main>
 </div>
 
+<!-- Search panel -->
 <div id="searchPanel" hidden>
   <div id="searchBox">
     <input id="searchInput" placeholder="Гарчиг эсвэл галиг текстээр хайх…  (Esc — хаах)">
     <div id="searchResults"></div>
   </div>
 </div>
-<input type="file" id="jsonFile" accept=".json" hidden>
+
+<!-- File input -->
+<input type="file" id="jsonFile" accept=".json">
 
 <script>
-/* ═══════════ Жишээ өгөгдөл (bодит өгөгдлийг sudur_data.json-оор авна) ═══════════ */
-const DEMO = { aimags:[ { id:"a1", title:"Билгийн аймаг", volumes:[ { id:"v26", number:26,
-  title:"Хутагт билгийн чанад хязгаарт хүрсэн 100 мянгат",
-  chapters:[
-    { id:"c1", title:"Тэргүүн бөлөг. Оршил", sections:[
-      { id:"c1s1", title:"Хэсэг 1", pages:[
-        { id:"p1", text:"Ийн хэмээн миний сонссон нэгэн цагт…" },
-        { id:"p2", text:"" } ] } ] },
-    { id:"c2", title:"Дэд бөлөг",        sections:[ { id:"c2s1", title:"Хэсэг 1", pages:[ { id:"p3", text:"" } ] } ] },
-    { id:"c3", title:"Гутгаар бөлөг",    sections:[ { id:"c3s1", title:"Хэсэг 1", pages:[ { id:"p4", text:"" } ] } ] },
-    { id:"c4", title:"Дөтгөөр бөлөг",    sections:[ { id:"c4s1", title:"Хэсэг 1", pages:[ { id:"p5", text:"" } ] } ] },
-    { id:"c5", title:"Тавдугаар бөлөг",  sections:[ { id:"c5s1", title:"Хэсэг 1", pages:[ { id:"p6", text:"" } ] } ] },
-    { id:"c6", title:"Зургадугаар бөлөг",sections:[ { id:"c6s1", title:"Хэсэг 1", pages:[ { id:"p7", text:"" } ] } ] },
-    { id:"c7", title:"Долдугаар бөлөг",  sections:[ { id:"c7s1", title:"Хэсэг 1", pages:[ { id:"p8", text:"" } ] } ] },
-    { id:"c8", title:"Наймдугаар бөлөг", sections:[ { id:"c8s1", title:"Хэсэг 1", pages:[ { id:"p9", text:"" } ] } ] }
-  ] } ] } ] };
+window.__err = [];
+window.onerror = function(msg, url, line) {
+  window.__err.push(msg + " (line " + line + ")");
+  var el = document.getElementById("loadMsg");
+  if (el) { el.innerHTML = "⚠ " + msg + " (line " + line + ")"; el.className = "msg err"; }
+};
+</script>
+<script>
 
-/* ═══════════ Төлөв ═══════════ */
+/* ═══════════ Demo data ═══════════ */
+const DEMO = {aimags:[{id:"a1",title:"Билгийн аймаг",volumes:[{id:"v26",number:26,
+  title:"Хутагт билгийн чанад хязгаарт хүрсэн 100 мянгат",chapters:[
+    {id:"c1",title:"Тэргүүн бөлөг. Оршил",sections:[
+      {id:"c1s1",title:"Хэсэг 1",pages:[
+        {id:"p1",text:"Ийн хэмээн миний сонссон нэгэн цагт…"},
+        {id:"p2",text:""}]}]},
+    {id:"c2",title:"Дэд бөлөг",sections:[{id:"c2s1",title:"Хэсэг 1",pages:[{id:"p3",text:""}]}]},
+    {id:"c3",title:"Гутгаар бөлөг",sections:[{id:"c3s1",title:"Хэсэг 1",pages:[{id:"p4",text:""}]}]},
+    {id:"c4",title:"Дөтгөөр бөлөг",sections:[{id:"c4s1",title:"Хэсэг 1",pages:[{id:"p5",text:""}]}]},
+    {id:"c5",title:"Тавдугаар бөлөг",sections:[{id:"c5s1",title:"Хэсэг 1",pages:[{id:"p6",text:""}]}]},
+    {id:"c6",title:"Зургадугаар бөлөг",sections:[{id:"c6s1",title:"Хэсэг 1",pages:[{id:"p7",text:""}]}]},
+    {id:"c7",title:"Долдугаар бөлөг",sections:[{id:"c7s1",title:"Хэсэг 1",pages:[{id:"p8",text:""}]}]},
+    {id:"c8",title:"Наймдугаар бөлөг",sections:[{id:"c8s1",title:"Хэсэг 1",pages:[{id:"p9",text:""}]}]}
+  ]}]}]};
+
+/* ═══════════ State ═══════════ */
 let DATA = DEMO;
-const S = { aimag:0, volume:0, chapter:0, section:0, page:0, mode:"page", tab:"chapter", scope:"chapter" };
+const CROP_INDEX = {};
+const CROP_LOADED = new Set();
+let SHOW_ALL_CROPS = false;
+const IIIF_SERVER = "https://iiif.bdrc.io";
+const IIIF_INSTANCE = "bdr:I1PD110269";
+const IIIF_WIDTH = 2000;
+
+function bdrcImageUrl(seq) {
+  var imgId = IIIF_INSTANCE + "::I1PD110269" + String(seq).padStart(4, "0") + ".jpg";
+  return IIIF_SERVER + "/" + imgId + "/full/!" + IIIF_WIDTH + "," + IIIF_WIDTH + "/0/color.jpg";
+}
+const S = {aimag:0,volume:0,chapter:0,section:0,page:0,mode:"page",tab:"chapter",scope:"chapter"};
 const $ = id => document.getElementById(id);
 const curA = () => DATA.aimags[S.aimag];
-const curV = () => curA()?.volumes[S.volume];
-const curC = () => curV()?.chapters[S.chapter];
+const curV = () => {var a=curA(); return a?a.volumes[S.volume]:undefined;};
+const curC = () => {var v=curV(); return v?v.chapters[S.chapter]:undefined;};
+const curS = () => {var c=curC(); return c?c.sections[S.section]:undefined;};
 const chPages = ch => ch.sections.flatMap(s => s.pages);
 
-/* ═══════════ Хадгалалт (localStorage) ═══════════ */
-const getKey = pid => "gtr_" + pid;
-const savedText = p => localStorage.getItem(getKey(p.id)) ?? p.text ?? "";
-function bindTextareas(root){
-  root.querySelectorAll("textarea.tr").forEach(t => {
-    t.addEventListener("input", () => {
-      localStorage.setItem(getKey(t.dataset.page), t.value);
-      const tag = t.parentElement.querySelector(".saved");
-      if (tag){ tag.style.visibility = "visible"; setTimeout(()=>tag.style.visibility="hidden", 900); }
-    });
-  });
+/* ═══════════ Crop index loading ═══════════ */
+async function loadCropIndex(volNum) {
+  if (CROP_LOADED.has(volNum)) return;
+  CROP_LOADED.add(volNum);
+  try {
+    const r = await fetch(`data/crops_index/vol_${volNum.padStart(3,"0")}.json`);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const idx = await r.json();
+    for (const page in idx) {
+      CROP_INDEX[`vol${volNum}_p${page}`] = idx[page];
+    }
+  } catch (e) {
+    console.warn("No crop index for vol " + volNum, e);
+  }
 }
 
-/* ═══════════ Зураг / хуудасны блок ═══════════ */
-function scanHTML(p, i){
-  return p.image
-    ? `<img src="${p.image}" loading="lazy" alt="Хуудас ${i+1}">`
-    : `<div class="scan-placeholder">Хуудас ${i+1}</div>`;
+/* ═══════════ localStorage + сервер галиг ═══════════ */
+const SERVER_TEXT = {};
+const getKey = pid => "gtr_" + pid;
+const savedText = p => localStorage.getItem(getKey(p.id)) || SERVER_TEXT[p.id] || p.text || "";
+
+/* ═══════════ Галиг API — серверт хадгалах, хайх ═══════════ */
+const PAGE_NAV = {};          // pageId → [aimag, volume, chapter, pageIndex]
+const API_PENDING = {};       // pageId → debounce timer
+const TOKEN_KEY = "gtr_token";
+let TOKEN_DECLINED = false;
+
+function buildPageNav() {
+  DATA.aimags.forEach((a, ai) => a.volumes.forEach((v, vi) => v.chapters.forEach((c, ci) => {
+    chPages(c).forEach((p, pi) => { if (!PAGE_NAV[p.id]) PAGE_NAV[p.id] = [ai, vi, ci, pi]; });
+  })));
 }
-function pageBlock(p, i){
-  return `<div class="pagecard">
-    <div class="scanwrap">${scanHTML(p,i)}</div>
-    <div class="caption">Хуудас ${i+1} · ${curV()?.title ?? ""}</div>
-    <div class="note">Энд кириллаар шууд бичиж болдог байхаар <span class="saved">✔ хадгалсан</span></div>
-    <textarea class="tr" data-page="${p.id}" placeholder="Кирилл галиг…">${savedText(p).replace(/</g,"&lt;")}</textarea>
+
+function apiToken() {
+  let t = localStorage.getItem(TOKEN_KEY);
+  if (!t && !TOKEN_DECLINED) {
+    const v = window.prompt("Галиг серверт хадгалах нууц код (цуцлавал серверт хадгалахгүй):");
+    if (v === null) { TOKEN_DECLINED = true; return ""; }
+    if (v) { localStorage.setItem(TOKEN_KEY, v); return v; }
+  }
+  return t || "";
+}
+
+function showTag(pid, txt, ms) {
+  const tag = $("saved_" + pid);
+  if (!tag) return;
+  tag.textContent = txt;
+  tag.style.visibility = "visible";
+  if (ms) setTimeout(() => { tag.style.visibility = "hidden"; tag.textContent = "✔ хадгалсан"; }, ms);
+}
+
+function saveToServer(pid, text) {
+  const t = apiToken();
+  if (!t || !text) return;
+  fetch("/api/translit/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-translit-token": t },
+    body: JSON.stringify({ page: pid, text: text })
+  }).then(r => {
+    if (r.ok) showTag(pid, "✔ серверт хадгалагдсан", 1800);
+    else if (r.status === 403) { localStorage.removeItem(TOKEN_KEY); showTag(pid, "✗ нууц код буруу"); }
+    else showTag(pid, "✗ хадгалагдсангүй (" + r.status + ")");
+  }).catch(() => showTag(pid, "✗ сүлжээ алга"));
+}
+
+function queueSave(p, ta) {
+  clearTimeout(API_PENDING[p.id]);
+  API_PENDING[p.id] = setTimeout(() => { delete API_PENDING[p.id]; saveToServer(p.id, ta.value); }, 700);
+}
+
+function loadServerText() {
+  fetch("/api/translit/all")
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !j.pages) return;
+      Object.assign(SERVER_TEXT, j.pages);
+      document.querySelectorAll("textarea[data-page]").forEach(ta => {
+        const pid = ta.getAttribute("data-page");
+        if (!ta.value && SERVER_TEXT[pid]) ta.value = SERVER_TEXT[pid];
+      });
+    }).catch(() => {});
+}
+
+window.addEventListener("beforeunload", () => {
+  const t = localStorage.getItem(TOKEN_KEY);
+  if (!t) return;
+  for (const pid in API_PENDING) {
+    clearTimeout(API_PENDING[pid]);
+    const ta = $("ta_" + pid);
+    if (!ta || !ta.value) continue;
+    fetch("/api/translit/save", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json", "x-translit-token": t },
+      body: JSON.stringify({ page: pid, text: ta.value })
+    }).catch(() => {});
+  }
+});
+
+/* ═══════════ Zoom modal ═══════════ */
+function showZoom(src) {
+  const m = document.createElement("div");
+  m.id = "zoomModal";
+  m.innerHTML = `<img src="${src}">`;
+  m.onclick = () => m.remove();
+  document.body.appendChild(m);
+}
+
+/* ═══════════ Image rendering ═══════════ */
+function scanHTML(p, i) {
+  const j = i + 1;
+  var volMatch = p.id.match(/vol(\d+)_p(\d+)/);
+  var volNum = volMatch ? parseInt(volMatch[1]) : 0;
+  var pageNum = volMatch ? parseInt(volMatch[2]) : j;
+  var localUrl = "/data_volumes/vol_" + String(volNum).padStart(4,'0') + "/page_" + String(pageNum).padStart(4,'0') + ".jpg";
+  var iiifUrl = "https://iiif.bdrc.io/bdr:I1PD110269::I1PD110269" + String(pageNum).padStart(4,'0') + ".jpg/full/!2000,2000/0/color.jpg";
+  return `<img src="${localUrl}" loading="lazy" alt="Хуудас ${j}" onerror="this.onerror=null;this.src='${iiifUrl}'" onclick="event.stopPropagation();showZoom(this.src)"><div style="display:none;padding:40px 60px;color:#9a8a70;font-weight:600">Хуудас ${j}</div>`;
+}
+
+function imageCard(p, i) {
+  return `<div class="imgcard">
+    ${scanHTML(p, i)}
+    <div class="imglabel">Хуудас ${i+1} &middot; ${(curV()||{}).title || ""}</div>
   </div>`;
 }
 
-/* ═══════════ Үндсэн муж ═══════════ */
-function renderMain(){
-  const v = curV(), ch = curC();
-  if (!v || !ch){ $("main").innerHTML = "<p>Өгөгдөл алга. 📂 товчоор sudur_data.json ачаална уу.</p>"; return; }
-  const crumbs = `<div class="crumbs"><span class="vol">Боть # ${v.number}</span>
-    <span class="sep">›</span><span class="title">${v.title}</span>
-    <span class="sep">›</span><span>${ch.title}</span></div>`;
-
-  if (S.mode === "page"){
-    const pages = chPages(ch);
-    S.page = Math.min(S.page, pages.length - 1);
-    $("main").innerHTML = crumbs + pageBlock(pages[S.page], S.page) +
-      `<div class="navrow">
-         <button id="prev" ${S.page===0?"disabled":""}>◀ Өмнөх</button>
-         <span style="align-self:center">${S.page+1} / ${pages.length}</span>
-         <button id="next" ${S.page>=pages.length-1?"disabled":""}>Дараах ▶</button>
-       </div>`;
-    $("prev")?.addEventListener("click", ()=>{ S.page--; renderMain(); });
-    $("next")?.addEventListener("click", ()=>{ S.page++; renderMain(); });
-  } else {
-    /* 📜 Бүтэн судар: сонгосон хүрээний бүх хуудсыг дараалуулна */
-    const scopeChs = S.scope==="chapter" ? [ch]
-                   : S.scope==="volume"  ? v.chapters
-                   : curA().volumes.flatMap(x=>x.chapters);
-    let html = crumbs + `<div class="navrow">Хүрээ:
-      <select id="scope">
-        <option value="chapter" ${S.scope==="chapter"?"selected":""}>Энэ бөлөг</option>
-        <option value="volume"  ${S.scope==="volume"?"selected":""}>Боть бүтэн</option>
-        <option value="all"     ${S.scope==="all"?"selected":""}>Аймаг бүтэн (бүх судар)</option>
-      </select></div>`;
-    let n = 0;
-    for (const c of scopeChs){
-      html += `<h3 style="margin:26px 4px 10px;color:var(--brown-d)">📜 ${c.title}</h3>`;
-      for (const p of chPages(c)) html += pageBlock(p, n++);
-    }
-    $("main").innerHTML = html;
-    $("scope")?.addEventListener("change", e => { S.scope = e.target.value; renderMain(); });
-  }
-  bindTextareas($("main"));
-  window.scrollTo(0,0);
+function textCard(p) {
+  const saved = savedText(p).replace(/</g, "&lt;");
+  return `<div class="textcard">
+    <div class="label">Галиг бичих <span class="saved" id="saved_${p.id}">✔ хадгалсан</span></div>
+    <textarea data-page="${p.id}" placeholder="Кирилл галиг…" id="ta_${p.id}">${saved}</textarea>
+  </div>`;
 }
 
-/* ═══════════ Хөтөч мод ═══════════ */
-function renderTree(){
-  document.querySelectorAll(".tabs button").forEach(b =>
+function bindTextarea(p) {
+  const ta = $(`ta_${p.id}`);
+  if (!ta) return;
+  ta.addEventListener("input", () => {
+    localStorage.setItem(getKey(p.id), ta.value);
+    const tag = $(`saved_${p.id}`);
+    if (tag) { tag.textContent = "✔ хадгалсан"; tag.style.visibility = "visible"; setTimeout(() => tag.style.visibility = "hidden", 900); }
+    queueSave(p, ta);
+  });
+}
+
+/* ═══════════ Render ═══════════ */
+function renderNav(pages) {
+  const prev = S.page === 0;
+  const next = S.page >= pages.length - 1;
+  $("navbar").innerHTML = `
+    <button id="btnFirst" ${prev ? "disabled" : ""}>⏮</button>
+    <button id="btnPrev" ${prev ? "disabled" : ""}>◀ Өмнөх</button>
+    <span class="pageinfo"><strong>${S.page + 1}</strong> / ${pages.length}</span>
+    <button id="btnNext" ${next ? "disabled" : ""}>Дараах ▶</button>
+    <button id="btnLast" ${next ? "disabled" : ""}>⏭</button>
+  `;
+  $("btnFirst").addEventListener("click", () => { S.page = 0; renderAll(); });
+  $("btnPrev").addEventListener("click", () => { S.page--; renderAll(); });
+  $("btnNext").addEventListener("click", () => { S.page++; renderAll(); });
+  $("btnLast").addEventListener("click", () => { S.page = pages.length - 1; renderAll(); });
+}
+
+function renderPage() {
+  const v = curV(), ch = curC(), sec = curS();
+  if (!v || !ch) { $("viewport").innerHTML = "<p style='color:var(--ink2);padding:40px'>Өгөгдөл алга. 📂 товчоор sudur_data.json ачаална уу.</p>"; return; }
+  const pages = (S.tab === "section" && sec) ? sec.pages : chPages(ch);
+  S.page = Math.min(S.page, pages.length - 1);
+  loadCropIndex(String(v.number));
+
+  var _pp = pages[S.page]; const cropCount = _pp ? (CROP_INDEX[_pp.id] ? CROP_INDEX[_pp.id].length : 0) : 0;
+  renderNav(pages);
+
+  const p = pages[S.page];
+  $("viewport").innerHTML = imageCard(p, S.page) + textCard(p);
+  bindTextarea(p);
+}
+
+function renderScroll() {
+  const v = curV(), ch = curC(), sec = curS();
+  if (!v || !ch) { $("viewport").innerHTML = "<p style='color:var(--ink2)'>Өгөгдөл алга.</p>"; return; }
+  // If section tab active and section exists, show only that section
+  if (S.tab === "section" && sec) {
+    $("navbar").innerHTML = `<span class="pageinfo">Гүйлгэж унших — ${sec.title}</span>`;
+    const viewport = $("viewport");
+    viewport.className = "scrollview";
+    let html = `<h3 style="color:var(--gold);margin:16px 0 8px;font-size:.9rem">${ch.title} › ${sec.title}</h3>`;
+    let n = 0;
+    for (const p of sec.pages) { html += imageCard(p, n++) + textCard(p); }
+    viewport.innerHTML = html;
+    for (const p of sec.pages) bindTextarea(p);
+    return;
+  }
+  const scopeChs = S.scope === "chapter" ? [ch] : S.scope === "volume" ? v.chapters : curA().volumes.flatMap(x => x.chapters);
+  $("navbar").innerHTML = `<span class="pageinfo">Гүйлгэж унших</span>`;
+  const viewport = $("viewport");
+  viewport.className = "scrollview";
+  let html = "";
+  let n = 0;
+  for (const c of scopeChs) {
+    html += `<h3 style="color:var(--gold);margin:16px 0 8px;font-size:.9rem">${c.title}</h3>`;
+    for (const p of chPages(c)) {
+      html += imageCard(p, n++) + textCard(p);
+    }
+  }
+  viewport.innerHTML = html;
+  for (const c of scopeChs) {
+    for (const p of chPages(c)) bindTextarea(p);
+  }
+}
+
+function renderAll() {
+  $("viewport").className = "viewport";
+  if (S.mode === "page") renderPage(); else renderScroll();
+  window.scrollTo(0, 0);
+}
+
+/* ═══════════ Sidebar tree ═══════════ */
+function renderTree() {
+  document.querySelectorAll("#tabs button").forEach(b =>
     b.classList.toggle("active", b.dataset.tab === S.tab));
   let html = "";
-  const node = (ic,label,sel,fn) => `<div class="node ${sel?"sel":""}" data-fn="${fn}"><span class="ic">${ic}</span>${label}</div>`;
-  if (S.tab === "aimag"){
-    DATA.aimags.forEach((a,i)=> html += node("📁", a.title, i===S.aimag, "a"+i));
-  } else if (S.tab === "volume"){
-    html += `<div class="root">📁 ${curA()?.title ?? ""}</div>`;
-    curA()?.volumes.forEach((v,i)=> html += node("📁", `Боть # ${v.number} · ${v.title}`, i===S.volume, "v"+i));
-  } else if (S.tab === "chapter"){
-    html += `<div class="root">📁 ${curV()?.title ?? ""}</div><div class="indent">`;
-    curV()?.chapters.forEach((c,i)=> html += node(i===S.chapter?"📂":"📁", c.title, i===S.chapter, "c"+i));
+  const node = (ic, label, sel, fn) => `<div class="node ${sel ? "sel" : ""}" data-fn="${fn}"><span class="ic">${ic}</span>${label}</div>`;
+
+  if (S.tab === "aimag") {
+    DATA.aimags.forEach((a, i) => html += node("📁", a.title, i === S.aimag, "a" + i));
+  } else if (S.tab === "volume") {
+    html += `<div class="root">📁 ${(curA()||{}).title || ""}</div>`;
+    (curA()||{}).volumes.forEach((v, i) => html += node("📖", `Боть # ${v.number} &middot; ${v.title}`, i === S.volume, "v" + i));
+  } else if (S.tab === "chapter") {
+    html += `<div class="root">📖 ${(curV()||{}).title || ""}</div><div class="indent">`;
+    if(curV()) curV().chapters.forEach((c, i) => html += node("📂", c.title, i === S.chapter, "c" + i));
     html += `</div>`;
   } else {
-    html += `<div class="root">📂 ${curC()?.title ?? ""}</div><div class="indent">`;
-    curC()?.sections.forEach((s,i)=> html += node("📄", s.title, i===S.section, "s"+i));
+    html += `<div class="root">📂 ${(curC()||{}).title || ""}</div><div class="indent">`;
+    if(curC()) curC().sections.forEach((s, i) => html += node("📄", s.title, i === S.section, "s" + i));
     html += `</div>`;
   }
   $("tree").innerHTML = html;
   $("tree").querySelectorAll(".node").forEach(el => el.addEventListener("click", () => {
     const k = el.dataset.fn, n = +k.slice(1);
-    if (k[0]==="a"){ S.aimag=n; S.volume=S.chapter=S.section=S.page=0; S.tab="volume"; }
-    if (k[0]==="v"){ S.volume=n; S.chapter=S.section=S.page=0; S.tab="chapter"; }
-    if (k[0]==="c"){ S.chapter=n; S.section=S.page=0; }
-    if (k[0]==="s"){ S.section=n; S.page=0; }
-    renderTree(); renderMain();
+    if (k[0]==="a"){S.aimag=n;S.volume=S.chapter=S.section=S.page=0;S.tab="volume";}
+    if (k[0]==="v"){S.volume=n;S.chapter=S.section=S.page=0;S.tab="chapter";}
+    if (k[0]==="c"){S.chapter=n;S.section=S.page=0;}
+    if (k[0]==="s"){S.section=n;S.page=0;}
+    renderTree(); renderAll();
   }));
 }
-document.querySelectorAll(".tabs button").forEach(b =>
-  b.addEventListener("click", ()=>{ S.tab = b.dataset.tab; renderTree(); }));
 
-/* ═══════════ Горим, хайлт, экспорт ═══════════ */
-$("btnPage").onclick = () => { S.mode="page"; $("btnPage").classList.add("active"); $("btnScroll").classList.remove("active"); renderMain(); };
-$("btnScroll").onclick = () => { S.mode="scroll"; $("btnScroll").classList.add("active"); $("btnPage").classList.remove("active"); renderMain(); };
+/* ═══════════ Tabs ═══════════ */
+document.querySelectorAll("#tabs button").forEach(b =>
+  b.addEventListener("click", () => { S.tab = b.dataset.tab; renderTree(); }));
 
-$("btnSearch").onclick = () => { $("searchPanel").hidden = false; $("searchInput").focus(); };
-$("searchPanel").addEventListener("click", e => { if (e.target.id==="searchPanel") $("searchPanel").hidden = true; });
-$("searchInput").addEventListener("keydown", e => { if (e.key==="Escape") $("searchPanel").hidden = true; });
-$("searchInput").addEventListener("input", e => {
-  const q = e.target.value.trim().toLowerCase();
-  if (!q){ $("searchResults").innerHTML = ""; return; }
-  let out = "", count = 0;
-  DATA.aimags.forEach((a,ai)=>a.volumes.forEach((v,vi)=>v.chapters.forEach((c,ci)=>{
-    if (count>50) return;
-    const pages = chPages(c);
-    pages.forEach((p,pi)=>{
-      const txt = savedText(p);
-      if (c.title.toLowerCase().includes(q) || txt.toLowerCase().includes(q)){
-        const snip = txt ? (txt.match(new RegExp(".{0,60}"+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+".{0,60}","i"))?.[0] ?? txt.slice(0,120)) : c.title;
-        out += `<div class="sres" data-nav="${ai},${vi},${ci},${pi}">
-          <div class="p">Боть ${v.number} › ${c.title} › хуудас ${pi+1}</div>${snip}</div>`;
-        count++;
-      }
-    });
-  })));
-  $("searchResults").innerHTML = out || "<p style='padding:10px'>Олдсонгүй.</p>";
-  $("searchResults").querySelectorAll(".sres").forEach(el => el.addEventListener("click", ()=>{
-    const [ai,vi,ci,pi] = el.dataset.nav.split(",").map(Number);
-    Object.assign(S,{aimag:ai,volume:vi,chapter:ci,page:pi,mode:"page"});
-    $("searchPanel").hidden = true; renderTree(); renderMain();
-  }));
+/* ═══════════ Sidebar collapse ═══════════ */
+$("btnCollapse").addEventListener("click", () => {
+  $("sidebar").classList.toggle("collapsed");
 });
 
+/* ═══════════ Mode buttons ═══════════ */
+$("btnPage").onclick = () => { S.mode="page";$("btnPage").classList.add("active");$("btnScroll").classList.remove("active");renderAll(); };
+$("btnScroll").onclick = () => { S.mode="scroll";$("btnScroll").classList.add("active");$("btnPage").classList.remove("active");renderAll(); };
+
+/* ═══════════ Search ═══════════ */
+$("btnSearch").onclick = () => { $("searchPanel").hidden=false;$("searchInput").focus(); };
+$("searchPanel").addEventListener("click", e => { if(e.target.id==="searchPanel")$("searchPanel").hidden=true; });
+$("searchInput").addEventListener("keydown", e => { if(e.key==="Escape")$("searchPanel").hidden=true; });
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+function bindSres(){
+  $("searchResults").querySelectorAll(".sres").forEach(el=>{
+    if(el.__bound)return;
+    el.__bound=true;
+    el.addEventListener("click",()=>{
+      if(!el.dataset.nav)return;
+      const [ai,vi,ci,pi]=el.dataset.nav.split(",").map(Number);
+      Object.assign(S,{aimag:ai,volume:vi,chapter:ci,page:pi,mode:"page"});
+      $("searchPanel").hidden=true;renderTree();renderAll();
+    });
+  });
+}
+let searchTimer=null,searchSeq=0;
+$("searchInput").addEventListener("input", e => {
+  const q = e.target.value.trim();
+  if(!q){$("searchResults").innerHTML="";return;}
+  const mySeq=++searchSeq;
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>{
+    if(searchSeq!==mySeq)return;
+    const ql=q.toLowerCase();
+    let out="",count=0;
+    DATA.aimags.forEach((a,ai)=>a.volumes.forEach((v,vi)=>v.chapters.forEach((c,ci)=>{
+      if(count>50)return;
+      chPages(c).forEach((p,pi)=>{
+        const txt=savedText(p);
+        if(c.title.toLowerCase().includes(ql)||txt.toLowerCase().includes(ql)){
+          const snip=txt?txt.slice(0,120):c.title;
+          out+='<div class="sres" data-nav="'+ai+','+vi+','+ci+','+pi+'"><div class="p">Боть '+v.number+' › '+escHtml(c.title)+' › хуудас '+(pi+1)+'</div>'+escHtml(snip)+'</div>';
+          count++;
+        }
+      });
+    })));
+    $("searchResults").innerHTML=out||"<p style='padding:10px;color:var(--ink2)'>Олдсонгүй.</p>";
+    bindSres();
+    fetch("/api/translit/search?q="+encodeURIComponent(q)+"&limit=20")
+      .then(r=>r.ok?r.json():null)
+      .then(j=>{
+        if(searchSeq!==mySeq||!j||!j.results||!j.results.length)return;
+        let apiOut="";
+        j.results.forEach(it=>{
+          const nav=PAGE_NAV[it.page];
+          apiOut+='<div class="sres"'+(nav?' data-nav="'+nav.join(',')+'"':'')+'><div class="p">Галиг › '+escHtml(it.page)+'</div>'+escHtml(it.snippet||'')+'</div>';
+        });
+        $("searchResults").insertAdjacentHTML("afterbegin",apiOut);
+        bindSres();
+      }).catch(()=>{});
+  },350);
+});
+
+/* ═══════════ Export ═══════════ */
 $("btnExport").onclick = () => {
-  const out = {};
-  for (let i=0;i<localStorage.length;i++){
-    const k = localStorage.key(i);
-    if (k.startsWith("gtr_")) out[k.slice(4)] = localStorage.getItem(k);
+  const out={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k.startsWith("gtr_"))out[k.slice(4)]=localStorage.getItem(k);
   }
-  const blob = new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "ganjuur_galiig_" + new Date().toISOString().slice(0,10) + ".json";
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="ganjuur_galiig_"+new Date().toISOString().slice(0,10)+".json";
   a.click();
 };
 
+/* ═══════════ Load JSON ═══════════ */
 $("btnLoad").onclick = () => $("jsonFile").click();
 $("jsonFile").onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => { try { DATA = JSON.parse(r.result);
-    Object.assign(S,{aimag:0,volume:0,chapter:0,section:0,page:0});
-    renderTree(); renderMain();
-  } catch(err){ alert("JSON алдаатай: "+err); } };
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{DATA=JSON.parse(r.result);buildPageNav();Object.assign(S,{aimag:0,volume:0,chapter:0,section:0,page:0});renderTree();renderAll();hideLoading();loadServerText();}
+    catch(err){alert("JSON алдаатай: "+err);}
+  };
   r.readAsText(f);
 };
 
-/* Товчлуураар хуудас сэлгэх (текст бичиж үед биш) */
-document.addEventListener("keydown", e => {
-  if (e.target.tagName==="TEXTAREA" || e.target.tagName==="INPUT" || S.mode!=="page") return;
-  if (e.key==="ArrowRight") $("next")?.click();
-  if (e.key==="ArrowLeft")  $("prev")?.click();
+/* ═══════════ Keyboard nav ═══════════ */
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT"||S.mode!=="page")return;
+  if(e.key==="ArrowRight")$("btnNext").click();
+  if(e.key==="ArrowLeft")$("btnPrev").click();
 });
 
-/* HTTP орчинд өгөгдөл байвал автоматаар ачаална */
-fetch("sudur_data.json").then(r=>{ if(!r.ok) throw 0; return r.json(); })
-  .then(j=>{ DATA=j; renderTree(); renderMain(); }).catch(()=>{});
+/* ═══════════ Loading overlay ═══════════ */
+function showErr(msg){
+  const m=$("loadMsg");m.className="msg err";m.innerHTML=msg;
+}
+function hideLoading(){
+  const ld=$("loading");ld.classList.add("hide");setTimeout(()=>ld.remove(),500);
+}
+function doRender(){
+  renderTree();renderAll();hideLoading();
+}
 
-renderTree(); renderMain();
+const loadStart=Date.now();
+fetch("sudur_data.json?v=" + Date.now())
+  .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+  .then(j=>{
+    if(!j||!j.aimags||!j.aimags.length)throw new Error("Өгөгдлийн бүтэц буруу");
+    DATA=j;buildPageNav();doRender();loadServerText();
+    const elapsed=((Date.now()-loadStart)/1000).toFixed(1);
+    console.log("Loaded in "+elapsed+"s — "+j.aimags.length+" aimags");
+  })
+  .catch(err=>{
+    console.error("Failed to load:",err);
+    showErr("⚠ sudur_data.json ачаалах боломжгүй байна: "+err.message+"<br><br>📂 товчоор гараас ачаална уу.");
+    doRender();
+  });
+
+renderTree();renderAll();
 </script>
 </body>
 </html>

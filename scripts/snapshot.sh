@@ -22,7 +22,8 @@ LATEST="snapshot1"
 LOGDIR="logs"
 LOG="${BASE}/${DATED}/logs/snapshot.log"
 KEEP="${GANJUUR_KEEP_SNAPSHOTS:-7}"
-PASS="${GANJUUR_SUDO_PASS:-pass#1234}"
+PASS="${GANJUUR_SUDO_PASS:-}"
+if [ -z "$PASS" ]; then echo "ERROR: GANJUUR_SUDO_PASS not set (see .env)" >&2; exit 1; fi
 
 # ---- logging bootstrap (create LOG dir BEFORE any say()) ------------
 mkdir -p "${BASE}/${DATED}/logs" "${BASE}/${DATED}/config" "${BASE}/snapshots"

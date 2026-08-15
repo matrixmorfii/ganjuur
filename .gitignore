@@ -61,3 +61,24 @@ ehthumbs.db
 
 # Pitch build outputs (regenerable)
 SudrynKhel_Pitch_Angles.docx
+
+# Local staging mirror of the server (deploy artifacts, not source of truth)
+server_sync/
+
+# Local media / scratch dirs
+my/
+tmp/
+
+# One-off debug / patch / export scripts (kept locally)
+scripts/_*.py
+scripts/patch_*.py
+scripts/export_crops_*.py
+scripts/get_vols.py
+scripts/status.txt
+scripts/upload.txt
+
+# Local notes and drafts (root level)
+/app06_24*.md
+/useful_links.md
+/тайлан.txt
+/*.docx

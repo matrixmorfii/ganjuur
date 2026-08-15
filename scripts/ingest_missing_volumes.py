@@ -52,7 +52,7 @@ INSTANCE_ID = "bdr:MW4CZ5370"
 MAX_IIIF_WIDTH = 2000
 EMPTY_PAGE_LIMIT = 20
 STRIDE = 50
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 POLITENESS_DELAY = 0.2
 MIN_FREE_GB = 5.0
 
@@ -138,18 +138,24 @@ def page_iiif_url(vol_local_id: str, seq: int) -> str:
 def download_page(vol_local_id: str, seq: int) -> np.ndarray | None:
     url = page_iiif_url(vol_local_id, seq)
     headers = {"User-Agent": USER_AGENT, "Accept": "image/jpeg,image/*"}
-    try:
-        r = requests.get(url, headers=headers, timeout=120, stream=True)
-        if r.status_code == 404:
+    for attempt in range(1, 5):
+        try:
+            r = requests.get(url, headers=headers, timeout=120, stream=True)
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            raw = r.content
+            if len(raw) < 100:
+                return None
+            img = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+            return img
+        except requests.exceptions.ConnectionError:
+            wait = 5 * attempt
+            print(f"    [conn retry {attempt}/4] waiting {wait}s", flush=True)
+            time.sleep(wait)
+        except requests.HTTPError:
             return None
-        r.raise_for_status()
-        raw = r.content
-        if len(raw) < 100:
-            return None
-        img = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
-        return img
-    except requests.HTTPError:
-        return None
+    return None
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -181,7 +187,9 @@ def save_crop(crop: np.ndarray, page_id: str, frame_idx: int) -> tuple[str, str]
     frame_id = str(uuid.uuid4())
     shard = CROPS_DIR / frame_id[:2] / frame_id[2:4]
     shard.mkdir(parents=True, exist_ok=True)
-    fname = f"{frame_id}_p{page_id}_f{frame_idx:06d}.webp"
+    # sanitize page_id for use in filename (no colons, slashes, etc.)
+    safe_page = re.sub(r"[^A-Za-z0-9_.-]", "_", page_id)
+    fname = f"{frame_id}_p{safe_page}_f{frame_idx:06d}.webp"
     full = shard / fname
     ok = cv2.imwrite(str(full), crop, [cv2.IMWRITE_WEBP_QUALITY, 85])
     if not ok:
@@ -207,17 +215,18 @@ def embed_batch(model, processor, images: list[np.ndarray], device: str) -> np.n
 # 4. Qdrant
 # ──────────────────────────────────────────────────────────────────────
 def make_client():
-    from qdrant_client import QdrantClient, models
+    from qdrant_client import QdrantClient
     qdrant = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, prefer_grpc=False,
-                          check_compatibility=False)
+                          check_compatibility=False, timeout=120)
     if not qdrant.collection_exists(COLLECTION):
+        from qdrant_client import models as _m
         qdrant.create_collection(
             collection_name=COLLECTION,
-            vectors_config=models.VectorParams(size=VECTOR_DIM, distance=models.Distance.COSINE),
-            hnsw_config=models.HnswConfigDiff(m=16, ef_construct=100),
+            vectors_config=_m.VectorParams(size=VECTOR_DIM, distance=_m.Distance.COSINE),
+            hnsw_config=_m.HnswConfigDiff(m=16, ef_construct=100),
         )
-        for field, schema in [("status", models.PayloadSchemaType.KEYWORD),
-                              ("source", models.PayloadSchemaType.KEYWORD)]:
+        for field, schema in [("status", _m.PayloadSchemaType.KEYWORD),
+                              ("source", _m.PayloadSchemaType.KEYWORD)]:
             qdrant.create_payload_index(COLLECTION, field, field_schema=schema)
     return qdrant
 
@@ -225,6 +234,23 @@ def make_client():
 def disk_free_gb(path: Path = BASE) -> float:
     usage = shutil.disk_usage(str(path))
     return usage.free / (1024 ** 3)
+
+
+def upsert_with_retry(client, collection, points, max_attempts=4):
+    """Upsert with exponential backoff on timeout."""
+    from qdrant_client.http.exceptions import ResponseHandlingException
+    for attempt in range(1, max_attempts + 1):
+        try:
+            client.upsert(collection, points=points, wait=True)
+            return
+        except ResponseHandlingException as exc:
+            if "timed out" in str(exc).lower() and attempt < max_attempts:
+                wait = 10 * attempt
+                print(f"    [qdrant timeout retry {attempt}/{max_attempts}] waiting {wait}s",
+                      flush=True)
+                time.sleep(wait)
+            else:
+                raise
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -240,6 +266,7 @@ def main() -> int:
     global torch
     import torch
     from transformers import AutoImageProcessor, AutoModel
+    from qdrant_client import models
 
     missing = sorted(set(range(1, 109)) - existing_volumes())
     print(f"Missing volumes ({len(missing)}): {missing}")
@@ -297,6 +324,10 @@ def main() -> int:
             if img is None:
                 empty_streak += 1
                 page += 1
+                # if we just failed, back off a little (server may be rate-limiting)
+                if empty_streak > 0 and empty_streak % 5 == 0:
+                    print(f"  [backoff] {empty_streak} empty — sleeping 10s", flush=True)
+                    time.sleep(10)
                 continue
             empty_streak = 0
             processed = process_page(img)
@@ -320,7 +351,7 @@ def main() -> int:
                         id=pid,
                         vector=v.tolist(),
                         payload={
-                            "source": f"vol{vol_num}_p{page}",
+                            "source": f"vol{vol_num}",
                             "local_path": p,
                             "status": "EMBEDDED",
                             "embedding_model": MODEL_ID,
@@ -329,7 +360,7 @@ def main() -> int:
                     )
                     for v, p, pid in zip(vecs, batch_paths, batch_ids)
                 ]
-                qdrant.upsert(COLLECTION, points=points, wait=True)
+                upsert_with_retry(qdrant, COLLECTION, points)
                 indexed += len(points)
                 total_indexed += len(points)
                 batch_crops.clear()

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Монгол Ганжуур — Гарчиг</title>
+<style>
+:root{--bg:#1a0f05;--bg2:#2a1a0a;--bg3:#3a2510;--gold:#c8a267;--gold-l:#e0c890;--gold-d:#a07840;--paper:#f5f0e8;--ink:#f0e8d8;--ink2:#c8b898}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif}
+.topbar{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);padding:12px 20px;border-bottom:1px solid var(--bg3)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{height:40px;width:40px;object-fit:cover;border-radius:8px}
+.brand h1{font-size:1.1rem;color:var(--gold-l)}
+.back-btn{background:var(--bg3);border:1px solid var(--gold);color:var(--gold-l);padding:8px 16px;border-radius:6px;cursor:pointer;text-decoration:none}
+.container{max-width:1200px;margin:0 auto;padding:24px}
+h2{color:var(--gold);margin:24px 0 12px;font-size:1.1rem;border-bottom:1px solid var(--bg3);padding-bottom:8px}
+h2:first-child{margin-top:0}
+.aimag{background:var(--bg2);border-radius:8px;padding:12px 16px;margin-bottom:8px;border:1px solid var(--bg3);cursor:pointer;transition:all .15s}
+.aimag:hover{border-color:var(--gold);background:var(--bg3)}
+.aimag .name{font-weight:700;color:var(--gold-l);font-size:.95rem}
+.aimag .volumes{font-size:.8rem;color:var(--ink2);margin-top:4px}
+.vol-list{display:none;padding:8px 0 8px 24px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+.vol-list.show{display:grid}
+.vol-item{background:var(--bg2);border-radius:6px;padding:8px 12px;border:1px solid var(--bg3);font-size:.85rem;color:var(--ink2)}
+.vol-item:hover{border-color:var(--gold);color:var(--ink)}
+#zoomModal{position:fixed;inset:0;background:rgba(10,5,0,.92);z-index:50;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#zoomModal img{max-width:95vw;max-height:95vh;border:2px solid var(--gold)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:24px}
+.gallery img{width:100%;border-radius:4px;border:2px solid var(--gold);cursor:zoom-in}
+.gallery .label{text-align:center;padding:8px 0;font-size:.8rem;color:var(--ink2)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img class="logo" src="logo.jpg" alt="Ганжуур"><h1>Монгол Ганжуур — Гарчиг</h1></div>
+  <a class="back-btn" href="/ganjuur_sudur_kharagch.html">← Буцах</a>
+</header>
+<div class="container">
+<h2>Аймаг (6)</h2>
+<div id="aimags">
+<div class="aimag" onclick="toggleVols(0)">
+  <div class="name">Тарнийн аймаг</div>
+  <div class="volumes">Боть: 1-25</div>
+  <div class="vol-list" id="vols0" data-start="1" data-end="25"></div>
+</div>
+<div class="aimag" onclick="toggleVols(1)">
+  <div class="name">Билиг барамидын аймаг</div>
+  <div class="volumes">Боть: 26-37</div>
+  <div class="vol-list" id="vols1" data-start="26" data-end="37"></div>
+</div>
+<div class="aimag" onclick="toggleVols(2)">
+  <div class="name">Эрдэнэ давхарлиг</div>
+  <div class="volumes">Боть: 38-53</div>
+  <div class="vol-list" id="vols2" data-start="38" data-end="53"></div>
+</div>
+<div class="aimag" onclick="toggleVols(3)">
+  <div class="name">Олонхын судар</div>
+  <div class="volumes">Боть: 54-59</div>
+  <div class="vol-list" id="vols3" data-start="54" data-end="59"></div>
+</div>
+<div class="aimag" onclick="toggleVols(4)">
+  <div class="name">Судрын аймаг</div>
+  <div class="volumes">Боть: 60-92</div>
+  <div class="vol-list" id="vols4" data-start="60" data-end="92"></div>
+</div>
+<div class="aimag" onclick="toggleVols(5)">
+  <div class="name">Винайн аймаг</div>
+  <div class="volumes">Боть: 93-108</div>
+  <div class="vol-list" id="vols5" data-start="93" data-end="108"></div>
+</div>
+</div>
+<h2>Гарчигийн хуудсууд (9)</h2>
+<div class="gallery">
+<div>
+  <img src="data_volume_titles/image1.jpeg" alt="Хуудас 1" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 1</div>
+</div>
+<div>
+  <img src="data_volume_titles/image2.jpeg" alt="Хуудас 2" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 2</div>
+</div>
+<div>
+  <img src="data_volume_titles/image3.jpeg" alt="Хуудас 3" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 3</div>
+</div>
+<div>
+  <img src="data_volume_titles/image4.jpeg" alt="Хуудас 4" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 4</div>
+</div>
+<div>
+  <img src="data_volume_titles/image5.jpeg" alt="Хуудас 5" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 5</div>
+</div>
+<div>
+  <img src="data_volume_titles/image6.jpeg" alt="Хуудас 6" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 6</div>
+</div>
+<div>
+  <img src="data_volume_titles/image7.jpeg" alt="Хуудас 7" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 7</div>
+</div>
+<div>
+  <img src="data_volume_titles/image8.jpeg" alt="Хуудас 8" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 8</div>
+</div>
+<div>
+  <img src="data_volume_titles/image9.jpeg" alt="Хуудас 9" onclick="showZoom(this.src)">
+  <div class="label">Хуудас 9</div>
+</div>
+</div>
+</div>
+<div id="zoomModal" onclick="this.style.display='none'"></div>
+<script>
+function showZoom(src){var m=document.getElementById('zoomModal');m.innerHTML='<img src="'+src+'">';m.style.display='flex';}
+function toggleVols(i){
+  var el=document.getElementById('vols'+i);
+  if(el && !el.dataset.populated){
+    var start=parseInt(el.dataset.start);
+    var end=parseInt(el.dataset.end);
+    var html='';
+    for(var v=start; v<=end; v++){
+      html+='<div class="vol-item" onclick="event.stopPropagation();window.location.href=\'/view/ganjuur_sudur_kharagch.html?vol='+v+'\'">Боть '+v+'</div>';
+    }
+    el.innerHTML=html;
+    el.dataset.populated='1';
+  }
+  el.classList.toggle('show');
+}
+</script>
+</body>
+</html>
