@@ -566,17 +566,19 @@ def analytics_worker(job_id: str) -> None:
         update_analytics_job(job_id, "RUNNING", f"{total_points:,} хэсгээс {len(ids):,}-г түүвэрлэв. UMAP тооцоолж байна…", backend="docker")
         umap_neighbors = min(15, len(ids) - 1)
         # random_state өгвөл UMAP 1 core-д ордог тул зэрэгцээ тооцоололд үлдээнэ
-        reducer = umap.UMAP(n_neighbors=umap_neighbors, min_dist=0.1, metric="cosine")
+        reducer = umap.UMAP(n_neighbors=umap_neighbors, min_dist=0.1, metric="cosine", low_memory=True)
         coordinates = reducer.fit_transform(vectors)
+        del reducer
 
         update_analytics_job(job_id, "RUNNING", "Онцгой байдлын оноо тооцоолж байна…", backend="docker")
         # O(N²) brute-force LOF-ийн оронд ойролцоо kNN (UMAP-ын өөрийн хамаарал)
         from pynndescent import NNDescent
 
         knn_neighbors = min(20, len(ids) - 1)
-        index = NNDescent(vectors, metric="cosine", n_neighbors=knn_neighbors + 1)
+        index = NNDescent(vectors, metric="cosine", n_neighbors=knn_neighbors + 1, low_memory=True)
         _, distances = index.neighbor_graph
         scores = distances.mean(axis=1)
+        del index
         score_range = scores.max() - scores.min()
         normalized = (scores - scores.min()) / score_range if score_range > 0 else np.zeros_like(scores)
 
@@ -630,26 +632,15 @@ def analytics_status() -> str:
     job = latest_analytics_job()
     if job is None:
         return "*Аналитик ажил хараахан эхлээгүй байна.*"
-    status, message, backend = job
+    status, message, _backend = job
     icon = {"QUEUED": "🕒", "RUNNING": "🧭", "COMPLETE": "✅", "FAILED": "❌"}.get(status, "ℹ️")
-    backend_label = "Docker Qdrant" if backend == "docker" else "локал сан"
-    return f"{icon} **{status.title()}** — {message}\n\n_Ашигласан сангийн төрөл: {backend_label}_"
+    return f"{icon} **{status.title()}** — {message}"
 
 
-def scroll_all_analytics_points() -> list[Any]:
-    points: list[Any] = []
-    offset = None
-    while True:
-        records, offset = qdrant.scroll(
-            collection_name=COLLECTION_NAME,
-            scroll_filter=models.Filter(must=[models.FieldCondition(key="umap_x", range=models.Range(gte=-999999.0))]),
-            limit=5_000,
-            with_payload=["umap_x", "umap_y", "anomaly_score", "source"],
-            with_vectors=False,
-        )
-        points.extend(records)
-        if not records or offset is None:
-            return points
+# Газрын зурагт 2.3 сая цэгийг бүгдийг нь RAM-д авахгүй (2026-08-16-д сервис
+# 29GB идэж OOM-оор унасан) — урсгалаар уншиж, хязгаарлагдмал түүвэр + бүх
+# өндөр оноотой цэгийг л хадгална.
+DISPLAY_POINT_CAP = 60_000
 
 
 def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
@@ -659,37 +650,67 @@ def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
         paper_bgcolor="rgba(0,0,0,0)",
     )
     try:
-        records = scroll_all_analytics_points()
-        if not records:
+        rng = np.random.default_rng(42)
+        sample: list[tuple[float, float, float, str]] = []
+        anomalies: list[tuple[float, float, float, str, Any]] = []
+        normals_seen = 0
+        offset = None
+        while True:
+            records, offset = qdrant.scroll(
+                collection_name=COLLECTION_NAME,
+                scroll_filter=models.Filter(must=[models.FieldCondition(key="umap_x", range=models.Range(gte=-999999.0))]),
+                limit=5_000,
+                with_payload=["umap_x", "umap_y", "anomaly_score", "source"],
+                with_vectors=False,
+                offset=offset,
+            )
+            if not records:
+                break
+            for record in records:
+                payload = record.payload or {}
+                if "umap_x" not in payload or "umap_y" not in payload:
+                    continue
+                try:
+                    score = float(payload.get("anomaly_score", 0.0))
+                    x = float(payload["umap_x"])
+                    y = float(payload["umap_y"])
+                except (TypeError, ValueError):
+                    continue
+                source = str(payload.get("source", "Unknown"))
+                hover = f"Эх сурвалж: {source}<br>Онцгой оноо: {score:.3f}"
+                if score > 0.7:
+                    anomalies.append((x, y, score, source, record.id))
+                else:
+                    normals_seen += 1
+                    if len(sample) < DISPLAY_POINT_CAP:
+                        sample.append((x, y, score, hover))
+                    else:
+                        slot = int(rng.integers(0, normals_seen))
+                        if slot < DISPLAY_POINT_CAP:
+                            sample[slot] = (x, y, score, hover)
+            if offset is None:
+                break
+        if not sample and not anomalies:
             return empty, gr.update(choices=[], value=None)
-        x_values, y_values, scores, hover, anomalies = [], [], [], [], []
-        for record in records:
-            payload = record.payload or {}
-            if "umap_x" not in payload or "umap_y" not in payload:
-                continue
-            score = float(payload.get("anomaly_score", 0.0))
-            x_values.append(payload["umap_x"])
-            y_values.append(payload["umap_y"])
-            scores.append(score)
-            hover.append(f"Эх сурвалж: {payload.get('source', 'Unknown')}<br>Онцгой оноо: {score:.3f}")
-            if score > 0.7:
-                anomalies.append(record)
-        if not x_values:
-            return empty, gr.update(choices=[], value=None)
+        cloud = sample + [(x, y, s, h) for (x, y, s, h, _id) in anomalies]
+        x_values = [p[0] for p in cloud]
+        y_values = [p[1] for p in cloud]
+        scores = [p[2] for p in cloud]
+        hover_texts = [p[3] for p in cloud]
         figure = go.Figure()
         figure.add_trace(go.Scattergl(
             x=x_values, y=y_values, mode="markers",
-            marker=dict(size=[10 if score > 0.7 else 4 for score in scores], color=scores, colorscale="Viridis", showscale=True, opacity=0.85, colorbar=dict(title="Онцгой")),
-            text=hover, hoverinfo="text", name="Хэсгүүд",
+            marker=dict(size=[10 if s > 0.7 else 4 for s in scores], color=scores, colorscale="Viridis", showscale=True, opacity=0.85, colorbar=dict(title="Онцгой")),
+            text=hover_texts, hoverinfo="text", name="Хэсгүүд",
         ))
         figure.add_trace(go.Scattergl(
-            x=[record.payload["umap_x"] for record in anomalies],
-            y=[record.payload["umap_y"] for record in anomalies],
+            x=[a[0] for a in anomalies],
+            y=[a[1] for a in anomalies],
             mode="markers", marker=dict(size=12, color="red", symbol="circle-open", line=dict(width=2)),
             hoverinfo="skip", name="Өндөр онцгой (>0.7)",
         ))
         figure.update_layout(template="plotly_dark", title="Чанарын хяналтын газрын зураг", height=500, margin=dict(l=20, r=20, t=45, b=20), paper_bgcolor="rgba(0,0,0,0)")
-        choices = [(f"Оноо {record.payload.get('anomaly_score', 0):.3f} · {record.payload.get('source', 'Unknown')}", str(record.id)) for record in anomalies]
+        choices = [(f"Оноо {a[2]:.3f} · {a[3]}", str(a[4])) for a in anomalies]
         return figure, gr.update(choices=choices, value=choices[0][1] if choices else None)
     except Exception as exc:
         log.exception("Газрын зураг бүтээж чадсангүй")
