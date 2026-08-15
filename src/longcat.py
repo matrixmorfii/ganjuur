@@ -799,9 +799,6 @@ CSS = """
 .header h1 { color: white !important; margin: 0 !important; font-size: 1.7rem !important; }
 .header p { color: #f5e6d3 !important; margin: .35rem 0 0 !important; font-size: .98rem !important; }
 .header-logo img { border-radius: 10px; object-fit: cover; background: #fff; padding: 3px; }
-.flow-strip { display: flex; justify-content: center; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; padding: .55rem 1rem; background: #f7f1e8; border: 1px solid #e4d5bf; border-radius: 10px; font-size: .9rem; color: #5a4632; }
-.flow-step b { display: inline-flex; align-items: center; justify-content: center; width: 1.3rem; height: 1.3rem; background: #7a3e20; color: #fff; border-radius: 50%; margin-right: .35rem; font-size: .78rem; }
-.flow-arrow { color: #b09878; font-weight: 600; }
 footer { display: none !important; }
 """
 
@@ -826,15 +823,6 @@ def build_app() -> gr.Blocks:
             with gr.Column():
                 gr.Markdown("# Монгол Ганжуур")
                 gr.Markdown("Эртний судрын дүрсийг хайж, онцгой хэлбэрийг олж, галигийг хадгалах сан.")
-
-        gr.HTML(
-            '<div class="flow-strip">'
-            '<span class="flow-step"><b>1</b>Зураг оруулах</span><span class="flow-arrow">→</span>'
-            '<span class="flow-step"><b>2</b>Дүрсээр хайх</span><span class="flow-arrow">→</span>'
-            '<span class="flow-step"><b>3</b>Онцгой хэлбэр</span><span class="flow-arrow">→</span>'
-            '<span class="flow-step"><b>4</b>Галиг оруулах</span>'
-            '</div>'
-        )
 
         gr.HTML(
             f'<div style="text-align:center; margin-bottom:1rem;">'
