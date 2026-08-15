@@ -794,6 +794,8 @@ def append_suffix(text: str, suffix: str) -> str:
 # 6. ХЭРЭГЛЭГЧИЙН ХАРИЛЦАХ БҮС
 # =============================================================================
 CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Open+Sans:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap');
+body, .gradio-container, .prose, .markdown, button, input, textarea, select, label { font-family: 'Inter','Roboto','Open Sans','Lato','Noto Sans Mongolian',system-ui,sans-serif !important; }
 .gradio-container { max-width: 1240px !important; padding: 1.25rem !important; }
 .header { background: linear-gradient(135deg, #25324d, #5f3f2f); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: .75rem; align-items: center !important; }
 .header h1 { color: white !important; margin: 0 !important; font-size: 1.7rem !important; }
