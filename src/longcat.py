@@ -9,6 +9,7 @@ import atexit
 import logging
 import multiprocessing as mp
 import os
+import re
 import shutil
 import sqlite3
 import threading
@@ -489,6 +490,8 @@ def execute_visual_query(image_rgb: np.ndarray, top_k: int) -> list[tuple[str, s
         for point in response.points:
             payload = point.payload or {}
             frame_path = payload.get("local_path")
+            if frame_path and not Path(frame_path).exists():
+                frame_path = regenerate_crop(frame_path, str(payload.get("source", "")))
             if frame_path and Path(frame_path).exists():
                 results.append((str(frame_path), f"{point.score * 100:.1f}% таарч байна · {payload.get('source', 'Unknown source')}"))
         return results
@@ -717,6 +720,45 @@ def generate_plot() -> tuple[go.Figure, gr.Dropdown]:
         raise gr.Error(f"Газрын зургийг шинэчилж чадсангүй: {exc}") from exc
 
 
+VOLUMES_DIR = Path(os.getenv("GANJUUR_VOLUMES_DIR", "/home/trinity/data/volumes"))
+
+
+def regenerate_crop(local_path: str, source: str) -> str | None:
+    """Устсан кропс файлыг эх хуудасны сканаас ижил боловсруулалт, ижил
+    алхмаар нэг удаа дахин үүсгэж, хуучин замд нь бичнэ."""
+    m = re.search(r"vol(\d+)_p(\d+)_f(\d+)", source or "")
+    if not m:
+        return None
+    vol_n, page_n, frame_n = (int(g) for g in m.groups())
+    page_img = None
+    for cand in dict.fromkeys((vol_n, vol_n % 1000, vol_n // 10)):
+        for ext in (".jpg", ".tif", ".png"):
+            candidate = VOLUMES_DIR / f"vol_{cand:04d}" / f"page_{page_n:04d}{ext}"
+            if candidate.exists():
+                page_img = candidate
+                break
+        if page_img is not None:
+            break
+    if page_img is None:
+        return None
+    image_bgr = cv2.imread(str(page_img))
+    if image_bgr is None:
+        return None
+    processed = process_manuscript_image(image_bgr)
+    h, w = processed.shape[:2]
+    window = min(h, w)
+    axis_is_x = w >= h
+    pos = frame_n * DEFAULT_STRIDE
+    if pos + window > (w if axis_is_x else h):
+        return None
+    crop = processed[:, pos:pos + window] if axis_is_x else processed[pos:pos + window, :]
+    out = Path(local_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(out), crop, [cv2.IMWRITE_WEBP_QUALITY, 85]):
+        return None
+    return str(out)
+
+
 def inspect_node(node_id: str) -> tuple[str | None, str, go.Figure]:
     if not node_id:
         return None, "Өндөр оноотой цэгийг сонгоно уу.", go.Figure()
@@ -739,6 +781,8 @@ def inspect_node(node_id: str) -> tuple[str | None, str, go.Figure]:
         embedding_plot = go.Figure(go.Bar(y=values, marker=dict(color=values, colorscale="RdBu", cmid=0)))
         embedding_plot.update_layout(title="Векторын товч (эхний 64)", template="plotly_dark", height=220, margin=dict(l=10, r=10, t=35, b=10), xaxis=dict(showticklabels=False), paper_bgcolor="rgba(0,0,0,0)")
         path = payload.get("local_path")
+        if path and not Path(path).exists():
+            path = regenerate_crop(path, str(payload.get("source", "")))
         return path if path and Path(path).exists() else None, metadata, embedding_plot
     except Exception as exc:
         log.exception("Цэгийн үзлэг амжилтгүй")
